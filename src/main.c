@@ -41,11 +41,12 @@ char WorldData[ 200 * 200 ] = { 0 };
 gfx_sprite_t *sprites[254];
 gfx_sprite_t dummy_sprite = {1, 1, 0};
 
+
 // Amount of blocks to render (similar to Chunk distance, but not all may not be drawn). X amount * Y amount
 int24_t renderDistance = 32 * 32;
 
 // Amount of Pixels to scroll. Ranges from 1 - 16. 1 being smooth but slowest, 16 being jumpy but fastest.
-int24_t PixelAmount = 1;
+int24_t pixelAmount = 4;
 
 
 // Best not to change these...
@@ -71,6 +72,7 @@ int main(void) {
 	ti_Close(appvar);
 	y = 125;
 	gfx_SetDrawBuffer();
+	gfx_SetTextFGColor(0);
 
 
 	Generator();
@@ -87,6 +89,8 @@ int Generator(void)
 	int24_t groundLevel = 8;
 	for (x = 0; x < 200; x++)
 	{
+		if ((groundLevel > 1) && (groundLevel < 200))
+			groundLevel += randInt(-1, 1);
 		for (y = 0; y < 200; y++)
 		{
 			blockType = 0;
@@ -110,8 +114,8 @@ int WorldEngine(void)
 {
 
 	int24_t pos = 0, render = 0, x = 0, y = 0, drawX = 0, drawY = 0, count = 1;
-	gfx_SetClipRegion(-16, -16, 336, 256);
-	gfx_SetTextFGColor(0);
+	int24_t scrollX = 0, scrollY = 0;
+	gfx_SetClipRegion(0-16, 0-16, 336, 256);
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
@@ -120,21 +124,20 @@ int WorldEngine(void)
 		{
 
 			redraw = 0;
-			gfx_FillScreen(181);
+			gfx_FillScreen(191);
 			count = 1;
 			pos = (playerX + (playerY * 200));
+			drawX = scrollX, drawY = scrollY;
 			for (render = 0; render < renderDistance; render++)
 			{
-				gfx_SetColor(32);
-				gfx_Rectangle(drawX, drawY, 16, 16);
 				if (WorldData[pos] == 1)
 				{
 					gfx_SetColor(5);
-					gfx_FillRectangle(drawX, drawY, 16, 16);
+					gfx_FillRectangle_NoClip(drawX, drawY, 16, 16);
 				}
 				if (WorldData[pos] == 2)
 				{
-					gfx_SetColor(5);
+					gfx_SetColor(163);
 					gfx_FillRectangle(drawX, drawY, 16, 16);
 				}
 				if (WorldData[pos] == 3)
@@ -150,7 +153,7 @@ int WorldEngine(void)
 				drawX += 16;
 				count++;
 				pos++;
-				if (count == 20)
+				if (count == 21)
 				{
 					count = 1;
 					drawX = 0;
@@ -158,14 +161,58 @@ int WorldEngine(void)
 					pos += (200 - 20); 
 				}
 			}
+			gfx_PrintStringXY("v1.0.00a by TimmyCraft", 2, 2);
+			gfx_BlitBuffer();
 
 		}
 
-		gfx_PrintStringXY("v1.0.00a by TimmyCraft", 2, 2);
-	}
 
 		if (kb_IsDown(kb_KeyLeft) && (playerX > 0))
-            playerX--;
+		{
+            scrollX += pixelAmount;
+			delay(100);
+			if (scrollX > 0)
+			{
+				scrollX = -16;
+				playerX--;
+			}
+			redraw = 1;
+		}
+		if (kb_IsDown(kb_KeyRight) && (playerX < 200))
+		{
+            scrollX -= pixelAmount;
+			delay(100);
+			if (scrollX < -16)
+			{
+				scrollX = 0;
+				playerX++;
+			}
+			redraw = 1;
+		}
+		if (kb_IsDown(kb_KeyUp) && (playerY > 0))
+		{
+            scrollY += pixelAmount;
+			delay(100);
+			if (scrollY > 0)
+			{
+				scrollY = -16;
+				playerY--;
+			}
+			redraw = 1;
+		}
+		if (kb_IsDown(kb_KeyDown) && (playerY < 200))
+		{
+            scrollY -= pixelAmount;
+			delay(100);
+			if (scrollY < -16)
+			{
+				scrollY = 0;
+				playerY++;
+			}
+			redraw = 1;
+		}
+
+	}
 
 
 }
