@@ -28,6 +28,7 @@
 
 #include "compressor.h" //zx7 compression routines
 
+#include "gfx/gfx.h"
 
 //#define usb_callback_data_t usb_device_t
 
@@ -63,7 +64,7 @@ int main(void) {
     ti_var_t appvar;
     int24_t y, logo;
 	gfx_Begin(); //This sets the default palette, no need to set the palette again
-	gfx_SetTransparentColor(0);
+	gfx_SetTransparentColor(252);
 	ti_CloseAll();
 	gfx_SetClipRegion(-17, -17, 337, 257);
 	LoadBlocks("MCEDEFT");
@@ -115,7 +116,7 @@ int WorldEngine(void)
 
 	int24_t pos = 0, render = 0, x = 0, y = 0, drawX = 0, drawY = 0, count = 1;
 	int24_t scrollX = 0, scrollY = 0;
-	gfx_SetClipRegion(0-16, 0-16, 336, 256);
+	gfx_SetClipRegion(0-17, 0-17, 337, 257);
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
@@ -127,38 +128,35 @@ int WorldEngine(void)
 			gfx_FillScreen(191);
 			count = 1;
 			pos = (playerX + (playerY * 200));
-			drawX = scrollX, drawY = scrollY;
+			drawX = scrollX;
+			drawY = scrollY;
 			for (render = 0; render < renderDistance; render++)
 			{
 				if (WorldData[pos] == 1)
 				{
-					gfx_SetColor(5);
-					gfx_FillRectangle_NoClip(drawX, drawY, 16, 16);
+					gfx_TransparentSprite(sprites[2], drawX, drawY);
 				}
 				if (WorldData[pos] == 2)
 				{
-					gfx_SetColor(163);
-					gfx_FillRectangle(drawX, drawY, 16, 16);
+					gfx_TransparentSprite(sprites[3], drawX, drawY);
 				}
 				if (WorldData[pos] == 3)
 				{
-					gfx_SetColor(148);
-					gfx_FillRectangle(drawX, drawY, 16, 16);
+					gfx_TransparentSprite(sprites[1], drawX, drawY);
 				}
 				if (WorldData[pos] == 4)
 				{
-					gfx_SetColor(32);
-					gfx_FillRectangle(drawX, drawY, 16, 16);
+					gfx_TransparentSprite(sprites[7], drawX, drawY);
 				}
 				drawX += 16;
 				count++;
 				pos++;
-				if (count == 21)
+				if (count == 22)
 				{
 					count = 1;
-					drawX = 0;
+					drawX = scrollX;
 					drawY += 16;
-					pos += (200 - 20); 
+					pos += (200 - 21);
 				}
 			}
 			gfx_PrintStringXY("v1.0.00a by TimmyCraft", 2, 2);
@@ -170,7 +168,6 @@ int WorldEngine(void)
 		if (kb_IsDown(kb_KeyLeft) && (playerX > 0))
 		{
             scrollX += pixelAmount;
-			delay(100);
 			if (scrollX > 0)
 			{
 				scrollX = -16;
@@ -181,7 +178,6 @@ int WorldEngine(void)
 		if (kb_IsDown(kb_KeyRight) && (playerX < 200))
 		{
             scrollX -= pixelAmount;
-			delay(100);
 			if (scrollX < -16)
 			{
 				scrollX = 0;
@@ -192,7 +188,6 @@ int WorldEngine(void)
 		if (kb_IsDown(kb_KeyUp) && (playerY > 0))
 		{
             scrollY += pixelAmount;
-			delay(100);
 			if (scrollY > 0)
 			{
 				scrollY = -16;
@@ -203,7 +198,6 @@ int WorldEngine(void)
 		if (kb_IsDown(kb_KeyDown) && (playerY < 200))
 		{
             scrollY -= pixelAmount;
-			delay(100);
 			if (scrollY < -16)
 			{
 				scrollY = 0;
