@@ -25,6 +25,7 @@ Added features and improvements:
  - World Size is 200 x 200 blocks... that may be enough to satisfy a calculator...gamer? Let's make it a thing!
  - Added tree generation
  - Added ponds/lakes generation
+ - Added a basic shadowing system. This improves speeds!
 
 
 Thanks for testing! This will be updated frequently!
