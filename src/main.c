@@ -27,45 +27,22 @@
 #include <ctype.h>
 
 #include "compressor.h" //zx7 compression routines
-
-#include "gfx/gfx.h"
-
-gfx_TempSprite(logo, 16, 16);
-int natureBlocks[13] = {GRASS, DIRT, STONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
-int buildingBlocks[3] = {OAKPLANK, GLASS, SPONGE};
-int redstoning[3] = {REDSTONEDUSTOFF, NOTEBLOCK, REGULARPISTONRIGHTOFF};
-int toolsEtc[3] = { BEDBACK, WATER, LAVA };
-
-int typesvalues[4] = {13, 3, 3, 3};
-
+#include "defines.h"
 
 //#define usb_callback_data_t usb_device_t
 
 int Generator(void);
 int WorldEngine(void);
-int Behaviors(void);
+int LoadChunks(int24_t position);
+int Behaviors(int24_t position);
 int creativeInventory(void);
 
 
-char WorldData[ 200 * 200 ] = { 0 };
-
-gfx_sprite_t *sprites[254];
-gfx_sprite_t dummy_sprite = {1, 1, 0};
-
-
-// Amount of blocks to render (similar to Chunk distance, but not all may not be drawn). X amount * Y amount
-int24_t renderDistance = 32 * 32;
+// Amount of chunks to render (chunks are 16x16) max is 5 by 5 for now
+int24_t renderX = 1, renderY = 1;
 
 // Amount of Pixels to scroll. Ranges from 1 - 16. 1 being smooth but slowest, 16 being jumpy but fastest.
-int24_t pixelAmount = 4;
-
-
-// Best not to change these...
-int24_t redraw = 1, playerX = 0, playerY = 0, curPos = (200 * 2) + 6, curX = 96, curY = 32;
-int24_t blockSel = 0, hotbarSel = 0, timeofday = 0;
-int24_t pos = 0, render = 0, x = 0, y = 0, drawX = 0, drawY = 0, count = 1;
-int24_t scrollX = 0, scrollY = 0;
-int24_t hotbar[5] = {0}, dayColors[5] = {191, 158, 125, 51, 9};
+int24_t pixelAmount = 2;
 
 int main(void) {
 
@@ -136,10 +113,15 @@ int WorldEngine(void)
 			pos = (playerX + (playerY * 200));
 			drawX = scrollX;
 			drawY = scrollY;
-			for (render = 0; render < renderDistance; render++)
+			LoadChunks(pos);
+			for (render = 0; render < 21 * 16; render++)
 			{
 				if (WorldData[pos] != 0)
 					gfx_TransparentSprite(sprites[WorldData[pos] - 1], drawX, drawY);
+				if (WorldData[pos] == WATERENTITY + 1)
+					gfx_TransparentSprite(sprites[WATER], drawX, drawY);
+				if (WorldData[pos] == LAVAENTITY + 1)
+					gfx_TransparentSprite(sprites[LAVA], drawX, drawY);
 				drawX += 16;
 				count++;
 				pos++;
@@ -153,7 +135,10 @@ int WorldEngine(void)
 			}
 
 
-			gfx_PrintStringXY("v1.0.00a by TimmyCraft", 2, 2);
+			gfx_PrintStringXY("v1.0.0a by TimmyCraft", 2, 2);
+
+			gfx_SetTextXY(15, 15);
+			gfx_PrintInt(WorldDataTimer[curPos], 1);
 
 			gfx_SetColor(0);
 			gfx_Rectangle(curX, curY, 16, 16);
@@ -207,8 +192,12 @@ int WorldEngine(void)
 		}
 
 		blockSel = hotbar[hotbarSel];
-		if (kb_IsDown(kb_Key2nd)) {
+		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0)) {
 			WorldData[curPos] = blockSel + 1;
+			
+			if (blockSel == GRASS) WorldDataTimer[curPos] = 200;
+			if (blockSel == WATER) WorldDataTimer[curPos] = 10;
+			if (blockSel == LAVA) WorldDataTimer[curPos] = 20;
 			redraw = 1;
 		}
 		if (kb_IsDown(kb_KeyDel)) {
@@ -323,12 +312,44 @@ int WorldEngine(void)
 
 }
 
-int Behaviors(void) {
+int LoadChunks(int24_t position) {
 
-
+	int24_t scan = position;
+	if (position < 0) error = 1;
+	for (y = 0; y < 16 * renderY; y++) {
+		for (x = 0; x < 16 * renderX; x++) {
+			Behaviors(scan);
+			scan++;
+		}
+		scan += 200 - (renderX * 16);
+	}
 
 }
 
+int Behaviors(int24_t position) {
+	
+	if (WorldDataTimer[position] != 0) {
+		WorldDataTimer[position]--;
+		redraw = 1;
+	}
+
+	// grass turns to dirt
+	if ((WorldData[position] == GRASS + 1) && (WorldData[position - 200] != 0) && (WorldDataTimer[position] == 0))
+		WorldData[position] = DIRT + 1;
+
+	// water flows downward
+	if ((WorldData[position] == WATER + 1) && (WorldData[position + 200] == 0) && (WorldDataTimer[position] == 0))
+	{
+		WorldData[position + 200] = WATERENTITY + 1;
+		WorldDataTimer[position + 200] = 10;
+	}
+	if ((WorldData[position] == WATERENTITY + 1) && (WorldData[position + 200] == 0) && (WorldDataTimer[position] == 0))
+	{
+		WorldData[position + 200] = WATERENTITY + 1;
+		WorldDataTimer[position + 200] = 10;
+	}
+
+}
 
 int creativeInventory(void)
 {
