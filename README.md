@@ -1,4 +1,4 @@
-# 2D-Minecraft-CE-C-
+# 2D-Minecraft-CE-C-LITE
 Developed By: TimmyTurner51 (TimmyCraft)
 
 
@@ -23,6 +23,8 @@ Added features and improvements:
  - Added water downward flowing (only implemented halfway)
  - Changed smooth scrolling. It now scrolls by 2 pixels, but you can change that in main.c
  - World Size is 200 x 200 blocks... that may be enough to satisfy a calculator...gamer? Let's make it a thing!
+ - Added tree generation
+ - Added ponds/lakes generation
 
 
 Thanks for testing! This will be updated frequently!
