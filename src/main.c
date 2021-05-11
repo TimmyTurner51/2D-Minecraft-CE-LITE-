@@ -42,7 +42,7 @@ int creativeInventory(void);
 int24_t renderX = 1, renderY = 1;
 
 // Amount of Pixels to scroll. Ranges from 1 - 16. 1 being smooth but slowest, 16 being jumpy but fastest.
-int24_t pixelAmount = 2;
+int24_t pixelAmount = 4;
 
 int main(void) {
 
@@ -72,14 +72,45 @@ int main(void) {
 int Generator(void)
 {
 	int24_t x = 0, y = 0, blockType = 0;
-	int24_t groundLevel = 8;
+	int24_t groundLevel = 18, pos = 0, posb = 0, posc = 0, posd = 0;
 	for (x = 0; x < 200; x++)
 	{
 		if ((groundLevel > 1) && (groundLevel < 200))
 			groundLevel += randInt(-1, 1);
+
+		// water generation
+		if ((randInt(0, 12) == 1) && (x > 20))
+		{
+			pos = x - randInt(6, 20);
+			posd = randInt(2,4);
+			groundLevel = 18;
+			for (posb = pos; posb < x; posb++)
+			{
+				posd += randInt(-1,1);
+				for (posc = 0; posc < groundLevel + posd; posc++)
+				{
+					WorldData[posb + (posc * 200)] = 0;
+					if (posc > groundLevel) WorldData[posb + (posc * 200)] = WATER + 1;
+				}
+				WorldData[posb + (groundLevel * 200)] = WATER + 1;
+			}
+		}
+
+		// tree generation
+		if ((randInt(0, 3) == 0) && (WorldData[x + (groundLevel * 200)] != WATER + 1))
+		{
+			pos = groundLevel - 5;
+			WorldData[x + (pos * 200)] = OAKLEAVES + 1;
+			WorldData[x - 1 + ((pos + 1) * 200)] = OAKLEAVES + 1;
+			WorldData[x + 1 + ((pos + 1) * 200)] = OAKLEAVES + 1;
+			WorldData[x + ((pos + 1) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 2) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 3) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 4) * 200)] = OAKLOGS + 1;
+		}
+
 		for (y = 0; y < 200; y++)
 		{
-			blockType = 0;
 
 			if (y == groundLevel)
 				blockType = GRASS + 1;
@@ -90,7 +121,7 @@ int Generator(void)
 			if (y == 200)
 				blockType = BEDROCK + 1;
 
-			WorldData[x + (y * 200)] = blockType;
+			if (y >= groundLevel) WorldData[x + (y * 200)] = blockType;
 		}
 	}
 
@@ -113,10 +144,14 @@ int WorldEngine(void)
 			pos = (playerX + (playerY * 200));
 			drawX = scrollX;
 			drawY = scrollY;
+			gfx_SetColor(32);
 			LoadChunks(pos);
 			for (render = 0; render < 21 * 16; render++)
 			{
-				if (WorldData[pos] != 0)
+				// draw the shadowing box (not for water, lava, etc.)
+				if ((WorldData[pos] != 0) && (WorldData[pos] != BEDBACK + 1) && (WorldData[pos] != GLASS + 1) && (WorldData[pos] != BEDFRONT + 1) && (WorldData[pos] != WATER + 1) && (WorldData[pos] != LAVA + 1))
+					gfx_FillRectangle(drawX, drawY, 16, 16);
+				if ((WorldData[pos] != 0) && ((WorldData[pos] == WATER + 1) || (WorldData[pos] == LAVA + 1) || (WorldData[pos - 1] == 0) || (WorldData[pos + 1] == 0) || (WorldData[pos - 200] == 0) || (WorldData[pos + 200] == 0)))
 					gfx_TransparentSprite(sprites[WorldData[pos] - 1], drawX, drawY);
 				if (WorldData[pos] == WATERENTITY + 1)
 					gfx_TransparentSprite(sprites[WATER], drawX, drawY);
@@ -192,7 +227,7 @@ int WorldEngine(void)
 		}
 
 		blockSel = hotbar[hotbarSel];
-		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0)) {
+		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0)&& (blockSel != 0)) {
 			WorldData[curPos] = blockSel + 1;
 			
 			if (blockSel == GRASS) WorldDataTimer[curPos] = 200;
@@ -328,14 +363,18 @@ int LoadChunks(int24_t position) {
 
 int Behaviors(int24_t position) {
 	
-	if (WorldDataTimer[position] != 0) {
+	if ((WorldDataTimer[position] != 0) && (WorldData[position] != GRASS + 1)) {
 		WorldDataTimer[position]--;
 		redraw = 1;
 	}
 
 	// grass turns to dirt
-	if ((WorldData[position] == GRASS + 1) && (WorldData[position - 200] != 0) && (WorldDataTimer[position] == 0))
-		WorldData[position] = DIRT + 1;
+	if ((WorldData[position] == GRASS + 1) && (WorldData[position - 200] != 0) && (WorldDataTimer[position] > -1))
+	{
+		if (WorldDataTimer[position] == 0) WorldData[position] = DIRT + 1;
+		WorldDataTimer[position]--;
+		redraw = 1;
+	}
 
 	// water flows downward
 	if ((WorldData[position] == WATER + 1) && (WorldData[position + 200] == 0) && (WorldDataTimer[position] == 0))
