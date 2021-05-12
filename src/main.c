@@ -430,6 +430,14 @@ int Behaviors(int24_t position) {
 		if (WorldData[position + 200] == WATER + 1) 
 		{
 			WorldData[position] = 0;
+			if (WorldData[position + 400] != WATERENTITYB + 1) WorldData[position + 200] = SAND + 1;
+			WorldData[position + 400] = SAND + 1;
+			WorldDataTimer[position + 400] = 3;
+		}
+		if (WorldData[position + 200] == LAVA + 1) 
+		{
+			WorldData[position] = 0;
+			if (WorldData[position + 400] != LAVAENTITYB + 1) WorldData[position + 200] = SAND + 1;
 			WorldData[position + 400] = SAND + 1;
 			WorldDataTimer[position + 400] = 3;
 		}
@@ -458,6 +466,14 @@ int Behaviors(int24_t position) {
 		if (WorldData[position + 200] == WATER + 1) 
 		{
 			WorldData[position] = 0;
+			if (WorldData[position + 400] != WATERENTITYB + 1) WorldData[position + 200] = GRAVEL + 1;
+			WorldData[position + 400] = GRAVEL + 1;
+			WorldDataTimer[position + 400] = 3;
+		}
+		if (WorldData[position + 200] == LAVA + 1) 
+		{
+			WorldData[position] = 0;
+			if (WorldData[position + 400] != LAVAENTITYB + 1) WorldData[position + 200] = GRAVEL + 1;
 			WorldData[position + 400] = GRAVEL + 1;
 			WorldDataTimer[position + 400] = 3;
 		}
