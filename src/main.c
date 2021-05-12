@@ -35,6 +35,7 @@ int Generator(void);
 int WorldEngine(void);
 int LoadChunks(int24_t position);
 int Behaviors(int24_t position);
+int LoadNew(int24_t position);
 int creativeInventory(void);
 
 
@@ -200,6 +201,11 @@ int WorldEngine(void)
 					gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
 				}
 			}
+			
+			gfx_TransparentSprite(Head_1, 16 * 9 + 3, 16 * 5 + 16);
+			gfx_TransparentSprite(Body_1, 16 * 9 + 5, 16 * 5 + 24);
+			gfx_TransparentSprite(Leg_1, 16 * 9 + 5, 16 * 5 + 35);
+
 			gfx_BlitBuffer();
 
 		}
@@ -232,7 +238,9 @@ int WorldEngine(void)
 			
 			if (blockSel == GRASS) WorldDataTimer[curPos] = 200;
 			if (blockSel == WATER) WorldDataTimer[curPos] = 10;
-			if (blockSel == LAVA) WorldDataTimer[curPos] = 20;
+			if (blockSel == LAVA) WorldDataTimer[curPos] = 30;
+			if (blockSel == GRAVEL) WorldDataTimer[curPos] = 3;
+			if (blockSel == SAND) WorldDataTimer[curPos] = 3;
 			redraw = 1;
 		}
 		if (kb_IsDown(kb_KeyDel)) {
@@ -244,6 +252,7 @@ int WorldEngine(void)
 		{
 			if (scrollX > -1)
 			{
+				LoadNew(1);
 				curPos--;
 				scrollX = -16;
 				curX -= 16;
@@ -257,6 +266,7 @@ int WorldEngine(void)
 		{
 			if (scrollX < -15)
 			{
+				LoadNew(2);
 				curPos++;
 				scrollX = 0;
 				curX += 16;
@@ -270,6 +280,7 @@ int WorldEngine(void)
 		{
 			if (scrollY > -1)
 			{
+				LoadNew(3);
 				curPos -= 200;
 				scrollY = -16;
 				curY -= 16;
@@ -283,6 +294,7 @@ int WorldEngine(void)
 		{
 			if (scrollY < -15)
 			{
+				LoadNew(4);
 				curPos += 200;
 				scrollY = 0;
 				curY += 16;
@@ -347,6 +359,18 @@ int WorldEngine(void)
 
 }
 
+int LoadNew(int24_t position) {
+
+	// position: 1 = up, 2 = down, 3 = left, 4 = right (not added fully yet)
+	int24_t x = 0, y = 0;
+	for (x = 0; x < renderX * 16; x++) {
+		for (y = 0; y < renderY * 16; y++) {
+			WorldDataTimer[x * y] = 0;
+		}
+	}
+
+}
+
 int LoadChunks(int24_t position) {
 
 	int24_t scan = position;
@@ -363,7 +387,7 @@ int LoadChunks(int24_t position) {
 
 int Behaviors(int24_t position) {
 	
-	if ((WorldDataTimer[position] != 0) && (WorldData[position] != GRASS + 1)) {
+	if ((WorldDataTimer[position] > 0) && (WorldData[position] != GRASS + 1)) {
 		WorldDataTimer[position]--;
 		redraw = 1;
 	}
@@ -386,6 +410,51 @@ int Behaviors(int24_t position) {
 	{
 		WorldData[position + 200] = WATERENTITY + 1;
 		WorldDataTimer[position + 200] = 10;
+	}
+
+	// lava flows downward
+	if ((WorldData[position] == LAVA + 1) && (WorldData[position + 200] == 0) && (WorldDataTimer[position] == 0))
+	{
+		WorldData[position + 200] = LAVAENTITY + 1;
+		WorldDataTimer[position + 200] = 30;
+	}
+	if ((WorldData[position] == LAVAENTITY + 1) && (WorldData[position + 200] == 0) && (WorldDataTimer[position] == 0))
+	{
+		WorldData[position + 200] = LAVAENTITY + 1;
+		WorldDataTimer[position + 200] = 30;
+	}
+
+	// sand falls
+	if ((WorldData[position] == SAND + 1) && (WorldDataTimer[position] == 0))
+	{
+		if (WorldData[position + 200] == WATER + 1) 
+		{
+			WorldData[position] = 0;
+			WorldData[position + 400] = SAND + 1;
+			WorldDataTimer[position + 400] = 3;
+		}
+		if ((WorldData[position + 200] == 0) || (WorldData[position + 200] == WATERENTITY + 1) || (WorldData[position + 200] == LAVAENTITY + 1))
+		{
+			WorldData[position] = 0;
+			WorldData[position + 200] = SAND + 1;
+			WorldDataTimer[position + 200] = 3;
+		}
+	}
+	// gravel falls
+	if ((WorldData[position] == GRAVEL + 1) && (WorldDataTimer[position] == 0))
+	{
+		if (WorldData[position + 200] == WATER + 1) 
+		{
+			WorldData[position] = 0;
+			WorldData[position + 400] = GRAVEL + 1;
+			WorldDataTimer[position + 400] = 3;
+		}
+		if ((WorldData[position + 200] == 0) || (WorldData[position + 200] == WATERENTITY + 1) || (WorldData[position + 200] == LAVAENTITY + 1))
+		{
+			WorldData[position] = 0;
+			WorldData[position + 200] = GRAVEL + 1;
+			WorldDataTimer[position + 200] = 3;
+		}
 	}
 
 }

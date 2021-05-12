@@ -34,6 +34,7 @@
 #define WATERENTITY 32
 #define LAVAENTITY 33
 
+
 int natureBlocks[13] = {GRASS, DIRT, STONE, COBBLESTONE, SAND, GRAVEL, OAKLOGS, OAKLEAVES, BEDROCK, COALORE, IRONORE, GOLDORE, LAPIZORE};
 int buildingBlocks[3] = {OAKPLANK, GLASS, SPONGE};
 int redstoning[3] = {REDSTONEDUSTOFF, NOTEBLOCK, REGULARPISTONRIGHTOFF};
@@ -49,8 +50,11 @@ gfx_sprite_t dummy_sprite = {1, 1, 0};
 gfx_TempSprite(logo, 16, 16);
 
 char WorldData[ 200 * 200 ] = { 0 };
+
 int24_t WorldDataTimer[ 80 * 80 ] = { 0 };
-int24_t redraw = 1, playerX = 0, playerY = 0, curPos = (200 * 2) + 6, curX = 96, curY = 32;
+// int24_t WorldDataTimerLine[ 80 ] = { 0 };
+
+int24_t redraw = 1, playerX = 0, playerY = 0, curPos = (200 * 6) + 10, curX = 160, curY = 96;
 int24_t blockSel = 0, hotbarSel = 0, timeofday = 0;
 int24_t pos = 0, render = 0, x = 0, y = 0, drawX = 0, drawY = 0, count = 1;
 int24_t scrollX = 0, scrollY = 0, error = 0;
