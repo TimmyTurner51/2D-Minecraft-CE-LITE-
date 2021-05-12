@@ -91,7 +91,7 @@ int Generator(void)
 				for (posc = 0; posc < groundLevel + posd; posc++)
 				{
 					WorldData[posb + (posc * 200)] = 0;
-					if (posc > groundLevel) WorldData[posb + (posc * 200)] = WATER + 1;
+					if (posc > groundLevel) WorldData[posb + (posc * 200)] = WATERENTITYB + 1;
 				}
 				WorldData[posb + (groundLevel * 200)] = WATER + 1;
 			}
@@ -150,13 +150,13 @@ int WorldEngine(void)
 			for (render = 0; render < 21 * 16; render++)
 			{
 				// draw the shadowing box (not for water, lava, etc.)
-				if ((WorldData[pos] != 0) && (WorldData[pos] != BEDBACK + 1) && (WorldData[pos] != GLASS + 1) && (WorldData[pos] != BEDFRONT + 1) && (WorldData[pos] != WATER + 1) && (WorldData[pos] != LAVA + 1))
+				if ((WorldData[pos] != 0) && (WorldData[pos] != BEDBACK + 1) && (WorldData[pos] != GLASS + 1) && (WorldData[pos] != BEDFRONT + 1) && (WorldData[pos] != WATER + 1) && (WorldData[pos] != LAVA + 1) && (WorldData[pos] != WATERENTITYB + 1) && (WorldData[pos] != LAVAENTITYB + 1))
 					gfx_FillRectangle(drawX, drawY, 16, 16);
 				if ((WorldData[pos] != 0) && ((WorldData[pos] == WATER + 1) || (WorldData[pos] == LAVA + 1) || (WorldData[pos - 1] == 0) || (WorldData[pos + 1] == 0) || (WorldData[pos - 200] == 0) || (WorldData[pos + 200] == 0)))
 					gfx_TransparentSprite(sprites[WorldData[pos] - 1], drawX, drawY);
-				if (WorldData[pos] == WATERENTITY + 1)
+				if ((WorldData[pos] == WATERENTITY + 1) || (WorldData[pos] == WATERENTITYB + 1))
 					gfx_TransparentSprite(sprites[WATER], drawX, drawY);
-				if (WorldData[pos] == LAVAENTITY + 1)
+				if ((WorldData[pos] == LAVAENTITY + 1) || (WorldData[pos] == LAVAENTITYB + 1))
 					gfx_TransparentSprite(sprites[LAVA], drawX, drawY);
 				drawX += 16;
 				count++;
@@ -174,7 +174,7 @@ int WorldEngine(void)
 			gfx_PrintStringXY("v1.0.0a by TimmyCraft", 2, 2);
 
 			gfx_SetTextXY(15, 15);
-			gfx_PrintInt(WorldDataTimer[curPos], 1);
+			gfx_PrintInt(WorldData[curPos], 1);
 
 			gfx_SetColor(0);
 			gfx_Rectangle(curX, curY, 16, 16);
@@ -433,6 +433,18 @@ int Behaviors(int24_t position) {
 			WorldData[position + 400] = SAND + 1;
 			WorldDataTimer[position + 400] = 3;
 		}
+		if (WorldData[position + 200] == WATERENTITYB + 1)
+		{
+			WorldData[position] = LAVAENTITYB;
+			WorldData[position + 200] = SAND + 1;
+			WorldDataTimer[position + 200] = 3;
+		}
+		if (WorldData[position + 200] == LAVAENTITYB + 1)
+		{
+			WorldData[position] = WATERENTITYB;
+			WorldData[position + 200] = SAND + 1;
+			WorldDataTimer[position + 200] = 3;
+		}
 		if ((WorldData[position + 200] == 0) || (WorldData[position + 200] == WATERENTITY + 1) || (WorldData[position + 200] == LAVAENTITY + 1))
 		{
 			WorldData[position] = 0;
@@ -448,6 +460,18 @@ int Behaviors(int24_t position) {
 			WorldData[position] = 0;
 			WorldData[position + 400] = GRAVEL + 1;
 			WorldDataTimer[position + 400] = 3;
+		}
+		if (WorldData[position + 200] == WATERENTITYB + 1)
+		{
+			WorldData[position] = LAVAENTITYB;
+			WorldData[position + 200] = GRAVEL + 1;
+			WorldDataTimer[position + 200] = 3;
+		}
+		if (WorldData[position + 200] == LAVAENTITYB + 1)
+		{
+			WorldData[position] = WATERENTITYB;
+			WorldData[position + 200] = GRAVEL + 1;
+			WorldDataTimer[position + 200] = 3;
 		}
 		if ((WorldData[position + 200] == 0) || (WorldData[position + 200] == WATERENTITY + 1) || (WorldData[position + 200] == LAVAENTITY + 1))
 		{
