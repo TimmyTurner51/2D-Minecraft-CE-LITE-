@@ -28,7 +28,7 @@ Added features and improvements:
  - Added a basic shadowing system. This improves speeds!
  - Added basic player sprites
  - Moved the player cursor to a better spot when entering the world
- - Added basic gravel and sand gravity. (Water and Lava is somewhat broken, but halfway works for now)
+ - Pretty much completely fixed gravel and sand gravity.
 
 
 Thanks for testing! This will be updated frequently!
