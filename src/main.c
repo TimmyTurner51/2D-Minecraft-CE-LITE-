@@ -119,6 +119,14 @@ int Generator(void)
 				blockType = DIRT + 1;
 			if (y > groundLevel + 4)
 				blockType = STONE + 1;
+			if ((y > groundLevel + 10) && (y < groundLevel + 80) && (randInt(0, 10) == 0))
+				blockType = COALORE + 1;
+			if ((y > groundLevel + 60) && (y < groundLevel + 80) && (randInt(0, 10) == 0))
+				blockType = IRONORE + 1;
+			if ((y > groundLevel + 140) && (y < groundLevel + 190) && (randInt(0, 20) == 0))
+				blockType = GOLDORE + 1;
+			if ((y > groundLevel + 140) && (y < groundLevel + 190) && (randInt(0, 20) == 0))
+				blockType = LAPIZORE + 1;
 			if (y == 200)
 				blockType = BEDROCK + 1;
 
@@ -147,6 +155,7 @@ int WorldEngine(void)
 			drawY = scrollY;
 			gfx_SetColor(32);
 			LoadChunks(pos);
+			LoadBlocks("MCEDEFT");
 			for (render = 0; render < 21 * 16; render++)
 			{
 				// draw the shadowing box (not for water, lava, etc.)
@@ -174,7 +183,7 @@ int WorldEngine(void)
 			gfx_PrintStringXY("v1.0.0a by TimmyCraft", 2, 2);
 
 			gfx_SetTextXY(15, 15);
-			gfx_PrintInt(WorldData[curPos], 1);
+			gfx_PrintInt(playerY, 1);
 
 			gfx_SetColor(0);
 			gfx_Rectangle(curX, curY, 16, 16);
@@ -211,7 +220,10 @@ int WorldEngine(void)
 		}
 
 		if (kb_IsDown(kb_KeyStat) || kb_IsDown(kb_KeyAlpha) || kb_IsDown(kb_KeyApps) || kb_IsDown(kb_KeyMode))
+		{
 			redraw = 1;
+			delay(60);
+		}
 
 		// x 96 and 224
 		// y 32 and 210
