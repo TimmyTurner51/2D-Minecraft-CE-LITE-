@@ -28,7 +28,6 @@ converts:
       - Textures/Classic/2DMCITEMS.png
 
   - name: CLASSICF
-
     palette: xlibc
     tilesets:
       tile-width: 16

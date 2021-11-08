@@ -260,7 +260,10 @@ int WorldEngine(void)
 			WorldData[curPos] = 0;
 		}
 
-		if (kb_IsDown(kb_KeyLeft) && (playerX > 0))
+		testX = playerX + 9;
+		testY = playerY + 6;
+		
+		if (kb_IsDown(kb_KeyLeft) && (playerX > 0) && (WorldData[(testX + (testY * 200))] == 0))
 		{
 			if (scrollX > -1)
 			{
@@ -274,7 +277,7 @@ int WorldEngine(void)
 			curX += pixelAmount;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyRight) && (playerX < 200))
+		if (kb_IsDown(kb_KeyRight) && (playerX < 200) && (WorldData[((testX + 1) + (testY * 200))] == 0))
 		{
 			if (scrollX < -15)
 			{
@@ -288,7 +291,7 @@ int WorldEngine(void)
 			curX -= pixelAmount;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyUp) && (playerY > 0))
+		if (kb_IsDown(kb_KeyUp) && (playerY > 0) && (WorldData[(testX + ((testY - 1) * 200))] == 0))
 		{
 			if (scrollY > -1)
 			{
