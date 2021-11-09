@@ -73,28 +73,30 @@ int main(void) {
 int Generator(void)
 {
 	int24_t x = 0, y = 0, blockType = 0;
-	int24_t groundLevel = 18, pos = 0, posb = 0, posc = 0, posd = 0;
+	int24_t groundLevel = 18, groundLevelB, pos = 0, posb = 0, posc = 0, posd = 0;
 	for (x = 0; x < 200; x++)
 	{
-		if ((groundLevel > 1) && (groundLevel < 200))
+		if ((groundLevel > 1) && (groundLevel < 200) && (randInt(0, 12) != 1))
 			groundLevel += randInt(-1, 1);
 
 		// water generation
-		if ((randInt(0, 12) == 1) && (x > 20))
+		if ((randInt(0, 6) == 1) && (groundLevel == 30))
 		{
 			pos = x - randInt(6, 20);
 			posd = randInt(2,4);
-			groundLevel = 18;
+			groundLevelB = groundLevel + 1;
 			for (posb = pos; posb < x; posb++)
 			{
 				posd += randInt(-1,1);
-				for (posc = 0; posc < groundLevel + posd; posc++)
+				for (posc = 0; posc < groundLevelB + posd; posc++)
 				{
 					WorldData[posb + (posc * 200)] = 0;
-					if (posc > groundLevel) WorldData[posb + (posc * 200)] = WATERENTITYB + 1;
+					if (posc > groundLevelB) 
+						WorldData[posb + (posc * 200)] = WATERENTITYB + 1;
 				}
-				WorldData[posb + (groundLevel * 200)] = WATER + 1;
+				WorldData[posb + (groundLevelB * 200)] = WATER + 1;
 			}
+			groundLevel = groundLevelB;
 		}
 
 		// tree generation
@@ -132,6 +134,7 @@ int Generator(void)
 
 			if (y >= groundLevel) WorldData[x + (y * 200)] = blockType;
 		}
+
 	}
 
 }
@@ -182,6 +185,7 @@ int WorldEngine(void)
 
 			gfx_PrintStringXY("v1.0.0a by TimmyCraft", 2, 2);
 
+			gfx_SetTextFGColor(224);
 			gfx_SetTextXY(15, 15);
 			gfx_PrintInt(playerY, 1);
 
@@ -222,7 +226,7 @@ int WorldEngine(void)
 		if (kb_IsDown(kb_KeyStat) || kb_IsDown(kb_KeyAlpha) || kb_IsDown(kb_KeyApps) || kb_IsDown(kb_KeyMode))
 		{
 			redraw = 1;
-			delay(60);
+			delay(100);
 		}
 
 		// x 96 and 224
@@ -261,9 +265,9 @@ int WorldEngine(void)
 		}
 
 		testX = playerX + 9;
-		testY = playerY + 6;
+		testY = playerY + 5;
 		
-		if (kb_IsDown(kb_KeyLeft) && (playerX > 0) && (WorldData[(testX + (testY * 200))] == 0))
+		if (kb_IsDown(kb_KeyLeft) && (playerX > 0) && (WorldData[(testX + ((testY + 1) * 200))] == 0))
 		{
 			if (scrollX > -1)
 			{
@@ -277,7 +281,7 @@ int WorldEngine(void)
 			curX += pixelAmount;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyRight) && (playerX < 200) && (WorldData[((testX + 1) + (testY * 200))] == 0))
+		if (kb_IsDown(kb_KeyRight) && (playerX < 200) && (WorldData[((testX + 1) + ((testY + 1) * 200))] == 0))
 		{
 			if (scrollX < -15)
 			{
@@ -291,7 +295,7 @@ int WorldEngine(void)
 			curX -= pixelAmount;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyUp) && (playerY > 0) && (WorldData[(testX + ((testY - 1) * 200))] == 0))
+		if (kb_IsDown(kb_KeyUp) && (playerY > 0) && (WorldData[(testX + (testY * 200))] == 0))
 		{
 			if (scrollY > -1)
 			{
@@ -305,7 +309,7 @@ int WorldEngine(void)
 			curY += pixelAmount;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyDown) && (playerY < 200))
+		if (kb_IsDown(kb_KeyDown) && (playerY < 200 - 15))
 		{
 			if (scrollY < -15)
 			{
@@ -427,6 +431,34 @@ int Behaviors(int24_t position) {
 		WorldDataTimer[position + 200] = 10;
 	}
 
+	// water flows sideways
+	if (((WorldData[position] == WATER + 1) || (WorldData[position] == WATERENTITY + 1)) && (WorldData[position + 200] != 0) && (WorldData[position + 200] != WATERENTITY + 1) && (WorldDataTimer[position] == 0))
+	{
+		if (WorldData[position + 200 - 1] == 0)
+		{
+			WorldData[position + 200 - 1] = WATERENTITY + 1;
+			WorldDataTimer[position + 200 - 1] = 10;
+		}
+		if (WorldData[position + 200 + 1] == 0)
+		{
+			WorldData[position + 200 + 1] = WATERENTITY + 1;
+			WorldDataTimer[position + 200 + 1] = 10;
+		}
+	}
+	if (((WorldData[position] == WATER + 1) || (WorldData[position] == WATERENTITY + 1)) && (WorldData[position + 200] != 0) && (WorldData[position + 200] != WATERENTITY + 1) && (WorldDataTimer[position] == 0))
+	{
+		if (WorldData[position - 1] == 0)
+		{
+			WorldData[position - 1] = WATERENTITY + 1;
+			WorldDataTimer[position - 1] = 10;
+		}
+		if (WorldData[position + 1] == 0)
+		{
+			WorldData[position + 1] = WATERENTITY + 1;
+			WorldDataTimer[position + 1] = 10;
+		}
+	}
+
 	// lava flows downward
 	if ((WorldData[position] == LAVA + 1) && (WorldData[position + 200] == 0) && (WorldDataTimer[position] == 0))
 	{
@@ -437,6 +469,34 @@ int Behaviors(int24_t position) {
 	{
 		WorldData[position + 200] = LAVAENTITY + 1;
 		WorldDataTimer[position + 200] = 30;
+	}
+	
+	// lava flows sideways
+	if (((WorldData[position] == LAVA + 1) || (WorldData[position] == LAVAENTITY + 1)) && (WorldData[position + 200] != 0) && (WorldData[position + 200] != LAVAENTITY + 1) && (WorldDataTimer[position] == 0))
+	{
+		if (WorldData[position + 200 - 1] == 0)
+		{
+			WorldData[position + 200 - 1] = LAVAENTITY + 1;
+			WorldDataTimer[position + 200 - 1] = 30;
+		}
+		if (WorldData[position + 200 + 1] == 0)
+		{
+			WorldData[position + 200 + 1] = LAVAENTITY + 1;
+			WorldDataTimer[position + 200 + 1] = 30;
+		}
+	}
+	if (((WorldData[position] == LAVA + 1) || (WorldData[position] == LAVAENTITY + 1)) && (WorldData[position + 200] != 0) && (WorldData[position + 200] != LAVAENTITY + 1) && (WorldDataTimer[position] == 0))
+	{
+		if (WorldData[position - 1] == 0)
+		{
+			WorldData[position - 1] = LAVAENTITY + 1;
+			WorldDataTimer[position - 1] = 10;
+		}
+		if (WorldData[position + 1] == 0)
+		{
+			WorldData[position + 1] = LAVAENTITY + 1;
+			WorldDataTimer[position + 1] = 10;
+		}
 	}
 
 	// sand falls
