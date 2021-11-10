@@ -375,7 +375,7 @@ int WorldEngine(void)
 			}
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyDown) && (playerY < 200 - 15) && (WorldData[(testX + ((testY + 3) * 200))] == 0))
+		if ((flymode == 0) && (playerY < 200 - 15) && (WorldData[(testX + ((testY + 3) * 200))] == 0))
 		{
 			scrollY -= pixelAmount;
 			curY -= pixelAmount;
@@ -391,7 +391,7 @@ int WorldEngine(void)
 		}
 
 		// fix noclip collision problems
-		if ((playerY > 0) && (WorldData[(testX + ((testY + 2) * 200))] != 0))
+		if ((playerY > 0) && (scrollY == 0) && (WorldData[(testX + ((testY + 2) * 200))] != 0))
 		{
 			LoadNew(3);
 			curPos -= 200;
@@ -399,8 +399,6 @@ int WorldEngine(void)
 			playerY--;
 			redraw = 1;
 		}
-
-		// fix Cursor not snapped to grid
 
 
 		if (kb_IsDown(kb_KeyStat) && (curX < 320)) {
