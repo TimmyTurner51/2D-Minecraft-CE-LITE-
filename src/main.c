@@ -74,6 +74,12 @@ int Generator(void)
 {
 	int24_t x = 0, y = 0, blockType = 0;
 	int24_t groundLevel = 18, groundLevelB, pos = 0, posb = 0, posc = 0, posd = 0;
+
+	// 0 = creative, 1 = survival, 2 = adventure
+	gamemode = 0;
+	// 0 = off, 1 = on
+	flymode = 1;
+
 	for (x = 0; x < 200; x++)
 	{
 		if ((groundLevel > 1) && (groundLevel < 200) && (randInt(0, 12) != 1))
@@ -143,6 +149,9 @@ int WorldEngine(void)
 {
 	redraw = 1;
 	gfx_SetClipRegion(0-17, 0-17, 337, 257);
+	
+	//LoadBlocks("MCEDEFT");
+
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
@@ -158,7 +167,8 @@ int WorldEngine(void)
 			drawY = scrollY;
 			gfx_SetColor(32);
 			LoadChunks(pos);
-			LoadBlocks("MCEDEFT");
+			if (playerY % renderY)
+				LoadBlocks("MCEDEFT");
 			for (render = 0; render < 21 * 16; render++)
 			{
 				// draw the shadowing box (not for water, lava, etc.)
@@ -187,7 +197,7 @@ int WorldEngine(void)
 
 			gfx_SetTextFGColor(224);
 			gfx_SetTextXY(15, 15);
-			gfx_PrintInt(playerY, 1);
+			gfx_PrintInt(scrollX, 1);
 
 			gfx_SetColor(0);
 			gfx_Rectangle(curX, curY, 16, 16);
@@ -222,6 +232,20 @@ int WorldEngine(void)
 			gfx_BlitBuffer();
 
 		}
+		
+
+		if (dialog != 0)
+		{
+			gfx_SetTextFGColor(224);
+			gfx_PrintStringXY(dialogString, 2, 32);
+			gfx_BlitBuffer();
+			dialogTimer--;
+			if (dialogTimer == 0)
+			{
+				redraw = 1;
+				dialog = 0;
+			}
+		}
 
 		if (kb_IsDown(kb_KeyStat) || kb_IsDown(kb_KeyAlpha) || kb_IsDown(kb_KeyApps) || kb_IsDown(kb_KeyMode))
 		{
@@ -249,7 +273,7 @@ int WorldEngine(void)
 		}
 
 		blockSel = hotbar[hotbarSel];
-		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0)&& (blockSel != 0)) {
+		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0) && (blockSel != 0)) {
 			WorldData[curPos] = blockSel + 1;
 			
 			if (blockSel == GRASS) WorldDataTimer[curPos] = 200;
@@ -264,10 +288,37 @@ int WorldEngine(void)
 			WorldData[curPos] = 0;
 		}
 
+		if (kb_IsDown(kb_KeyMath))
+		{
+			delay(140);
+			dialogTimer = 100;
+			dialog = 1;
+			redraw = 1;
+			// 0 = creative, 1 = survival, 2 = adventure
+			gamemode++;
+			if (gamemode > 2) gamemode = 0;
+			if (gamemode == 0) dialogString = "Gamemode switched to Creative";
+			if (gamemode == 1) dialogString = "Gamemode switched to Survival";
+			if (gamemode == 2) dialogString = "Gamemode switched to Adventure";
+		}
+		
+		if (kb_IsDown(kb_KeyPrgm))
+		{
+			delay(140);
+			dialogTimer = 100;
+			dialog = 1;
+			redraw = 1;
+			// 0 = off, 1 = on
+			flymode++;
+			if (flymode > 1) flymode = 0;
+			if (flymode == 0) dialogString = "Fly Mode toggled Off";
+			if (flymode == 1) dialogString = "Fly Mode toggled On";
+		}
+
 		testX = playerX + 9;
 		testY = playerY + 5;
 		
-		if (kb_IsDown(kb_KeyLeft) && (playerX > 0) && (WorldData[(testX + ((testY + 1) * 200))] == 0))
+		if (kb_IsDown(kb_KeyLeft) && ((playerX > 0) || (scrollX < -1)) && (WorldData[(testX + ((testY + 1) * 200))] == 0))
 		{
 			if (scrollX > -1)
 			{
@@ -283,6 +334,8 @@ int WorldEngine(void)
 		}
 		if (kb_IsDown(kb_KeyRight) && (playerX < 200) && (WorldData[((testX + 1) + ((testY + 1) * 200))] == 0))
 		{
+            scrollX -= pixelAmount;
+			curX -= pixelAmount;
 			if (scrollX < -15)
 			{
 				LoadNew(2);
@@ -291,11 +344,9 @@ int WorldEngine(void)
 				curX += 16;
 				playerX++;
 			}
-            scrollX -= pixelAmount;
-			curX -= pixelAmount;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyUp) && (playerY > 0) && (WorldData[(testX + (testY * 200))] == 0))
+		if (kb_IsDown(kb_KeyUp) && (playerY > 0) && ((WorldData[(testX + (testY * 200))] == 0) || (scrollY < -1)))
 		{
 			if (scrollY > -1)
 			{
@@ -309,8 +360,11 @@ int WorldEngine(void)
 			curY += pixelAmount;
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyDown) && (playerY < 200 - 15))
+		
+		if (kb_IsDown(kb_KeyDown) && (playerY < 200 - 15) && (WorldData[(testX + ((testY + 3) * 200))] == 0))
 		{
+			scrollY -= pixelAmount;
+			curY -= pixelAmount;
 			if (scrollY < -15)
 			{
 				LoadNew(4);
@@ -319,10 +373,35 @@ int WorldEngine(void)
 				curY += 16;
 				playerY++;
 			}
-            scrollY -= pixelAmount;
-			curY -= pixelAmount;
 			redraw = 1;
 		}
+		if (kb_IsDown(kb_KeyDown) && (playerY < 200 - 15) && (WorldData[(testX + ((testY + 3) * 200))] == 0))
+		{
+			scrollY -= pixelAmount;
+			curY -= pixelAmount;
+			if (scrollY < -15)
+			{
+				LoadNew(4);
+				curPos += 200;
+				scrollY = 0;
+				curY += 16;
+				playerY++;
+			}
+			redraw = 1;
+		}
+
+		// fix noclip collision problems
+		if ((playerY > 0) && (WorldData[(testX + ((testY + 2) * 200))] != 0))
+		{
+			LoadNew(3);
+			curPos -= 200;
+			scrollY = 0;
+			playerY--;
+			redraw = 1;
+		}
+
+		// fix Cursor not snapped to grid
+
 
 		if (kb_IsDown(kb_KeyStat) && (curX < 320)) {
 			curX += 16;
