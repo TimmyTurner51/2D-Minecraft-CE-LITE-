@@ -38,12 +38,13 @@ int Behaviors(int24_t position);
 int LoadNew(int24_t position);
 int creativeInventory(void);
 
-
 // Amount of chunks to render (chunks are 16x16) max is 5 by 5 for now
 int24_t renderX = 1, renderY = 1;
 
 // Amount of Pixels to scroll. Ranges from 1 - 16. 1 being smooth but slowest, 16 being jumpy but fastest.
-int24_t pixelAmount = 4;
+int24_t pixelAmount = 2;
+// Amount of Pixels to scroll for falling/gravity (use 1, 2, 4, 6, 8, or 16)
+int24_t gravityPixelAmount = 6;
 
 int main(void) {
 
@@ -73,12 +74,12 @@ int main(void) {
 int Generator(void)
 {
 	int24_t x = 0, y = 0, blockType = 0;
-	int24_t groundLevel = 18, groundLevelB, pos = 0, posb = 0, posc = 0, posd = 0;
+	int24_t groundLevel = 24, groundLevelB, pos = 0, posb = 0, posc = 0, posd = 0;
 
 	// 0 = creative, 1 = survival, 2 = adventure
 	gamemode = 0;
 	// 0 = off, 1 = on
-	flymode = 1;
+	flymode = 0;
 
 	for (x = 0; x < 200; x++)
 	{
@@ -86,7 +87,7 @@ int Generator(void)
 			groundLevel += randInt(-1, 1);
 
 		// water generation
-		if ((randInt(0, 6) == 1) && (groundLevel == 30))
+		if ((randInt(0, 6) == 1) && (groundLevel == 34))
 		{
 			pos = x - randInt(6, 20);
 			posd = randInt(2,4);
@@ -104,20 +105,75 @@ int Generator(void)
 			}
 			groundLevel = groundLevelB;
 		}
+		
+		// village generation
+		if ((randInt(0, 6) == 1) && (groundLevel > 34))
+		{
+			pos = x - randInt(6, 20);
+			posd = randInt(2,4);
+			groundLevelB = groundLevel + 1;
+			for (posb = pos; posb < x; posb++)
+			{
+				posd += randInt(-1,1);
+				for (posc = 0; posc < groundLevelB + posd; posc++)
+				{
+					WorldData[posb + (posc * 200)] = 0;
+					if (posc > groundLevelB) 
+						WorldData[posb + (posc * 200)] = DIRT + 1;
+				}
+				WorldData[posb + (groundLevelB * 200)] = GRASS + 1;
+			}
+			groundLevel = groundLevelB;
+		}
 
 		// tree generation
-		if ((randInt(0, 3) == 0) && (WorldData[x + (groundLevel * 200)] != WATER + 1))
+		if ((randInt(0, 8) == 0) && (WorldData[x + (groundLevel * 200)] != WATER + 1))
 		{
-			pos = groundLevel - 5;
+			// oak tree
+			pos = groundLevel - 7;
 			WorldData[x + (pos * 200)] = OAKLEAVES + 1;
+			WorldData[x - 1 + (pos * 200)] = (OAKLEAVES + 1) * (randInt(0, 3) == 1);
+			WorldData[x + 1 + (pos * 200)] = (OAKLEAVES + 1) * (randInt(0, 3) == 1);
+			WorldData[x + ((pos + 1) * 200)] = OAKLEAVES + 1;
 			WorldData[x - 1 + ((pos + 1) * 200)] = OAKLEAVES + 1;
 			WorldData[x + 1 + ((pos + 1) * 200)] = OAKLEAVES + 1;
-			WorldData[x + ((pos + 1) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 2) * 200)] = OAKLEAVES + 1;
+			WorldData[x - 1 + ((pos + 2) * 200)] = OAKLEAVES + 1;
+			WorldData[x - 1 + ((pos + 3) * 200)] = OAKLEAVES + 1;
+			WorldData[x - 2 + ((pos + 2) * 200)] = (OAKLEAVES + 1) * (randInt(0, 3) == 1);
+			WorldData[x - 2 + ((pos + 3) * 200)] = (OAKLEAVES + 1) * (randInt(0, 3) == 1);
+			WorldData[x + 1 + ((pos + 2) * 200)] = OAKLEAVES + 1;
+			WorldData[x + 1 + ((pos + 3) * 200)] = OAKLEAVES + 1;
+			WorldData[x + 2 + ((pos + 2) * 200)] = (OAKLEAVES + 1) * (randInt(0, 3) == 1);
+			WorldData[x + 2 + ((pos + 3) * 200)] = (OAKLEAVES + 1) * (randInt(0, 3) == 1);
 			WorldData[x + ((pos + 2) * 200)] = OAKLOGS + 1;
 			WorldData[x + ((pos + 3) * 200)] = OAKLOGS + 1;
 			WorldData[x + ((pos + 4) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 5) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 6) * 200)] = OAKLOGS + 1;
 		}
-
+		if ((randInt(0, 8) == 0) && (WorldData[x + (groundLevel * 200)] != WATER + 1))
+		{
+			// spruce
+			pos = groundLevel - 6;
+			WorldData[x + (pos * 200)] = OAKLEAVES + 1;
+			WorldData[x + ((pos + 1) * 200)] = OAKLEAVES + 1;
+			WorldData[x - 1 + ((pos + 1) * 200)] = OAKLEAVES + 1;
+			WorldData[x + 1 + ((pos + 1) * 200)] = OAKLEAVES + 1;
+			WorldData[x + ((pos + 2) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 3) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 4) * 200)] = OAKLOGS + 1;
+			WorldData[x + ((pos + 5) * 200)] = OAKLOGS + 1;
+			if (randInt(0,3) == 1)
+			{
+				WorldData[x - 1 + ((pos + 3) * 200)] = OAKLEAVES + 1;
+				WorldData[x + 1 + ((pos + 3) * 200)] = OAKLEAVES + 1;
+				WorldData[x - 1 + ((pos + 5) * 200)] = OAKLEAVES + 1;
+				WorldData[x + 1 + ((pos + 5) * 200)] = OAKLEAVES + 1;
+				WorldData[x - 2 + ((pos + 5) * 200)] = OAKLEAVES + 1;
+				WorldData[x + 2 + ((pos + 5) * 200)] = OAKLEAVES + 1;
+			}
+		}
 		for (y = 0; y < 200; y++)
 		{
 
@@ -150,24 +206,27 @@ int WorldEngine(void)
 	redraw = 1;
 	gfx_SetClipRegion(0-17, 0-17, 337, 257);
 	
-	//LoadBlocks("MCEDEFT");
+	LoadBlocks("MCEDEFT");
+
 
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
 
+		testX = playerX + 10;
+		testY = playerY + 5;
+
 		if (redraw == 1)
 		{
-
 			redraw = 0;
 			gfx_FillScreen(191);
 			count = 1;
 			pos = (playerX + (playerY * 200));
-			drawX = scrollX;
+			drawX = scrollX - 8;
 			drawY = scrollY;
 			gfx_SetColor(32);
 			LoadChunks(pos);
-			if (playerY % renderY)
+			if (playerY % renderY) 
 				LoadBlocks("MCEDEFT");
 			for (render = 0; render < 21 * 16; render++)
 			{
@@ -180,13 +239,23 @@ int WorldEngine(void)
 					gfx_TransparentSprite(sprites[WATER], drawX, drawY);
 				if ((WorldData[pos] == LAVAENTITY + 1) || (WorldData[pos] == LAVAENTITYB + 1))
 					gfx_TransparentSprite(sprites[LAVA], drawX, drawY);
+
+				/*  // test noclip engine
+				if (pos == (testX + (testY * 200)))
+				{
+					gfx_SetColor(230);
+					gfx_Rectangle(drawX, drawY, 16, 16);
+					gfx_Rectangle(drawX + 1, drawY + 1, 14, 14);
+					gfx_SetColor(32);
+				}*/
+
 				drawX += 16;
 				count++;
 				pos++;
 				if (count == 22)
 				{
 					count = 1;
-					drawX = scrollX;
+					drawX = scrollX - 8;
 					drawY += 16;
 					pos += (200 - 21);
 				}
@@ -195,9 +264,9 @@ int WorldEngine(void)
 
 			gfx_PrintStringXY("v1.0.0a by TimmyCraft", 2, 2);
 
-			gfx_SetTextFGColor(224);
 			gfx_SetTextXY(15, 15);
-			gfx_PrintInt(scrollX, 1);
+			gfx_PrintInt(scrollY, 1);
+
 
 			gfx_SetColor(0);
 			gfx_Rectangle(curX, curY, 16, 16);
@@ -224,7 +293,8 @@ int WorldEngine(void)
 					gfx_FillRectangle(118 + (x * 18), 221, 16, 16);
 				}
 			}
-			
+
+
 			gfx_TransparentSprite(Head_1, 16 * 9 + 3, 16 * 5 + 16);
 			gfx_TransparentSprite(Body_1, 16 * 9 + 5, 16 * 5 + 24);
 			gfx_TransparentSprite(Leg_1, 16 * 9 + 5, 16 * 5 + 35);
@@ -232,20 +302,7 @@ int WorldEngine(void)
 			gfx_BlitBuffer();
 
 		}
-		
 
-		if (dialog != 0)
-		{
-			gfx_SetTextFGColor(224);
-			gfx_PrintStringXY(dialogString, 2, 32);
-			gfx_BlitBuffer();
-			dialogTimer--;
-			if (dialogTimer == 0)
-			{
-				redraw = 1;
-				dialog = 0;
-			}
-		}
 
 		if (kb_IsDown(kb_KeyStat) || kb_IsDown(kb_KeyAlpha) || kb_IsDown(kb_KeyApps) || kb_IsDown(kb_KeyMode))
 		{
@@ -270,6 +327,18 @@ int WorldEngine(void)
 		if ((curY > 240) && (!(kb_IsDown(kb_KeyUp)))) {
 			curY += 16;
 			curPos -= 200;
+		}
+
+		if (dialog != 0)
+		{
+			gfx_PrintStringXY(dialogString, 2, 32);
+			gfx_BlitBuffer();
+			dialogTimer--;
+			if (dialogTimer == 0)
+			{
+				redraw = 1;
+				dialog = 0;
+			}
 		}
 
 		blockSel = hotbar[hotbarSel];
@@ -301,23 +370,8 @@ int WorldEngine(void)
 			if (gamemode == 1) dialogString = "Gamemode switched to Survival";
 			if (gamemode == 2) dialogString = "Gamemode switched to Adventure";
 		}
-		
-		if (kb_IsDown(kb_KeyPrgm))
-		{
-			delay(140);
-			dialogTimer = 100;
-			dialog = 1;
-			redraw = 1;
-			// 0 = off, 1 = on
-			flymode++;
-			if (flymode > 1) flymode = 0;
-			if (flymode == 0) dialogString = "Fly Mode toggled Off";
-			if (flymode == 1) dialogString = "Fly Mode toggled On";
-		}
 
-		testX = playerX + 9;
-		testY = playerY + 5;
-		
+
 		if (kb_IsDown(kb_KeyLeft) && ((playerX > 0) || (scrollX < -1)) && (WorldData[(testX + ((testY + 1) * 200))] == 0))
 		{
 			if (scrollX > -1)
@@ -346,36 +400,126 @@ int WorldEngine(void)
 			}
 			redraw = 1;
 		}
-		if (kb_IsDown(kb_KeyUp) && (playerY > 0) && ((WorldData[(testX + (testY * 200))] == 0) || (scrollY < -1)))
-		{
-			if (scrollY > -1)
-			{
-				LoadNew(3);
-				curPos -= 200;
-				scrollY = -16;
-				curY -= 16;
-				playerY--;
-			}
-            scrollY += pixelAmount;
-			curY += pixelAmount;
-			redraw = 1;
+
+
+
+		listPos++;
+		if (listPos > 8) listPos = 0;
+
+		// double up to toggle fly mode
+		testVar = 0;
+		x = 0;
+		y = 0;
+		for (pos = 0; pos < 7; pos++) {
+			if (keyPresses[pos] != 0 && keyPresses[pos + 1] == 0 && x != 0 && y == 0)
+			y = pos;
+			if (keyPresses[pos] != 0 && keyPresses[pos + 1] == 0 && x == 0)
+			x = pos;
 		}
-		
-		if (kb_IsDown(kb_KeyDown) && (playerY < 200 - 15) && (WorldData[(testX + ((testY + 3) * 200))] == 0))
+		// 0 1 1 0 1 0 0 0
+		if (y - x > 0 && (!(kb_IsDown(kb_KeyUp))))
 		{
-			scrollY -= pixelAmount;
-			curY -= pixelAmount;
+			timer = 0;
+			dialogTimer = 100;
+			dialog = 1;
+			redraw = 1;
+			// 0 = off, 1 = on
+			flymode++;
+			if (flymode > 1) flymode = 0;
+			if (flymode == 0)
+			{
+				dialogString = "Fly Mode toggled Off";
+				curY += (-scrollY);
+				for (pos = 0; pos < 8; pos++) {
+					keyPresses[pos] = 0;
+				}
+			}
+			if (flymode == 1)
+			{
+				dialogString = "Fly Mode toggled On";
+				for (pos = 0; pos < 8; pos++) {
+					keyPresses[pos] = 0;
+				}
+			}
+		}
+
+		// gravity
+		if ((flymode == 0) && (WorldData[(testX + ((testY + 3) * 200))] == 0))
+		{
+			scrollY -= gravityPixelAmount;
+			curY -= gravityPixelAmount * (flymode == 0);
+			testVarB++;
 			if (scrollY < -15)
 			{
 				LoadNew(4);
-				curPos += 200;
+				curPos += 200 * ((jump == 0) + (flymode == 1));
+				curY += (testVarB * gravityPixelAmount) * (jump + flymode == 0);
+				testVarB = 0;
 				scrollY = 0;
-				curY += 16;
 				playerY++;
 			}
+			// jump = 1;
 			redraw = 1;
 		}
-		if ((flymode == 0) && (playerY < 200 - 15) && (WorldData[(testX + ((testY + 3) * 200))] == 0))
+
+		if (kb_IsDown(kb_KeyUp) && jump != 1)
+		{
+			//if  (playerY > 0 && WorldData[(testX + (testY * 200))] == 0)
+			if  ((playerY > 0) && ((WorldData[(testX + (testY * 200))] == 0) || (scrollY < -1)))
+			{
+				if (scrollY > -1)
+				{
+					LoadNew(3);
+					curPos -= 200 * flymode;
+					scrollY = -16;
+					curY -= 16 * flymode;
+					playerY--;
+				}
+				if (WorldData[(testX + ((testY + 3) * 200))] != 0)
+					jump = (flymode == 0);
+				if (flymode != 0) {
+					scrollY += pixelAmount;
+					curY += pixelAmount;
+				}else{
+					scrollY += gravityPixelAmount * jump;
+					curY += gravityPixelAmount * jump;
+				}
+			}
+			keyPresses[listPos] = 1;
+			redraw = 1;
+		}else{
+			keyPresses[listPos] = 0;
+			jump = 0;
+		}
+
+
+		// fix noclip collision problems
+		// auto jumps on a block
+		if ((playerY > 0) && (WorldData[(testX + ((testY + 2) * 200))] != 0))
+		{
+			LoadNew(3);
+			curPos -= 200;
+			scrollY = 0;
+			playerY--;
+			redraw = 1;
+		}
+		// try fixing the player jumping and noclipping into the block
+		/*if (scrollY < 0 && jump == 0 && WorldData[(testX + ((testY + 3) * 200))] != 0)
+		{
+			scrollY = 0;
+			redraw = 1;
+			delay(20);
+		}*/
+
+
+
+		// turn off fly mode if you touch the ground
+		if (kb_IsDown(kb_KeyDown) && (flymode == 1) && (playerY < 200 - 15) && (WorldData[(testX + ((testY + 3) * 200))] != 0))
+		flymode = 0;
+
+		// can add a ladder test to this var later as well, so you can go up and down on the blocks
+		testVar = flymode;
+		if (kb_IsDown(kb_KeyDown) && (testVar != 0) && (playerY < 200 - 15) && (WorldData[(testX + ((testY + 3) * 200))] == 0))
 		{
 			scrollY -= pixelAmount;
 			curY -= pixelAmount;
@@ -390,15 +534,6 @@ int WorldEngine(void)
 			redraw = 1;
 		}
 
-		// fix noclip collision problems
-		if ((playerY > 0) && (scrollY == 0) && (WorldData[(testX + ((testY + 2) * 200))] != 0))
-		{
-			LoadNew(3);
-			curPos -= 200;
-			scrollY = 0;
-			playerY--;
-			redraw = 1;
-		}
 
 
 		if (kb_IsDown(kb_KeyStat) && (curX < 320)) {
