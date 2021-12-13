@@ -56,11 +56,14 @@ char WorldData[ 200 * 200 ] = { 0 };
 int24_t WorldDataTimer[ 80 * 80 ] = { 0 };
 // int24_t WorldDataTimerLine[ 80 ] = { 0 };
 
-int24_t redraw = 1, playerX = 0, playerY = 0, curPos = (200 * 6) + 10, curX = 160, curY = 96;
+int24_t redraw = 1, playerX = 0, playerY = 0;
+int24_t curPos = (200 * 6) + 10, curX = 168, curY = 96;
 int24_t blockSel = 0, hotbarSel = 0, timeofday = 0;
 int24_t pos = 0, render = 0, x = 0, y = 0, drawX = 0, drawY = 0, count = 1;
-int24_t testX = 0, testY = 0, flymode = 0, gamemode = 0;
+int24_t testX = 0, testY = 0, flymode = 0, gamemode = 0, jump = 0;
 int24_t scrollX = 0, scrollY = 0, error = 0;
 int24_t hotbar[5] = {0}, dayColors[5] = {191, 158, 125, 51, 9};
 int24_t dialog = 0, dialogTimer = 0;
 char *dialogString = "null";
+
+int24_t keyPresses[8] = { 0 }, testVar, testVarB, listPos, timer;
