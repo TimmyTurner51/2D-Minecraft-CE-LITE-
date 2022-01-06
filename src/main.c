@@ -48,9 +48,9 @@ void input(char *string, int size);
 int24_t renderX = 1, renderY = 1;
 
 // Amount of Pixels to scroll. Ranges from 1 - 16. 1 being smooth but slowest, 16 being jumpy but fastest.
-int24_t pixelAmount = 2;
+int24_t pixelAmount = 3;
 // Amount of Pixels to scroll for falling/gravity (use 1, 2, 4, 6, 8, or 16)
-int24_t gravityPixelAmount = 4;
+int24_t gravityPixelAmount = 5;
 
 int main(void)
 {
@@ -382,6 +382,11 @@ void Game(void)
 	{
 		kb_Scan();
 
+		testX = playerX + 10;
+		testY = playerY + 5;
+
+		//if (redraw == 1)
+		RenderEngine();
 
 		testX = playerX + 10;
 		testY = playerY + 5;
@@ -407,8 +412,6 @@ void Game(void)
 			jump = 0;
 			redraw = 1;
 		}
-		//if (redraw == 1)
-		RenderEngine();
 
 		if (kb_IsDown(kb_KeyStat) || kb_IsDown(kb_KeyAlpha) || kb_IsDown(kb_KeyApps) || kb_IsDown(kb_KeyMode))
 		{
