@@ -15,16 +15,13 @@ Version: DEV_ALPHA v1.0.1
 WARNING! Backup your RAM before using this program! This is in heavy development, and bugs do exist. Some may cause crashes, but basic functionality is there.
 
 Controls:
-
-Up, down, left, and right arrow keys = Move around
-
-To fly, double press the up key quickly, as you would in real minecraft
-
-alpha, mode, stat, apps keys will move the block cursor
-
-2nd places
-
-del destroys
+ - Up, down, left, and right arrow keys = Move around
+ - To fly, double press the up key quickly, as you would in real minecraft
+ - alpha, mode, stat, apps keys will move the block cursor
+ - 2nd places
+ - del destroys
+ - [y=] through [graph] changes the selected hotbar slot.
+ - [X,T,0,n] opens the inventory.
 
 
 Added features and improvements:
