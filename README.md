@@ -2,11 +2,14 @@
 Developed By: TimmyTurner51 (TimmyCraft)
 
 
+Join our discord server! I upload progress there very frequently! 
+https://discord.gg/xavH5eTJP2
+
 Platforms: TI-84 Plus CE.
 
 OS versions: You can use anything below OS 5.5.
 
-Version: DEV_ALPHA v1.0.0
+Version: DEV_ALPHA v1.0.1
 
 
 Controls:
@@ -26,8 +29,12 @@ Added features and improvements:
  - Major bug fixes, which includes player cursor misalignment
  - New feature! You can now double-press the Up/Jump key to toggle flying!
  - Oak tree generation has been changed
- - Code has been implemented for village generation (no houses yet though_!
+ - Code has been implemented for village generation (no houses yet though)!
  - Code has been implemented for spruce trees!
+ - Readded menus
+ - Improved the World Rendering Engine
+ - Removed asm code, as it's been replaced with C versions.
+
 
 Future Updates (in order of timeline):
  - Finish Village Generation
@@ -37,14 +44,6 @@ Future Updates (in order of timeline):
  - Menus (again)
  - Saving/loading a world
  - Dimensions
-
-Other Features:
- - Smooth Worlds
- - Changed smooth scrolling. It now scrolls by 2 pixels, but you can change that in main.c
- - World Size is 200 x 200 blocks... that may be enough to satisfy a calculator minecrafter
- - Tree generation
- - Ponds/lakes generation
- - Speed increase with a basic shadowing system
 
 
 Thanks for testing! This will be updated frequently!
