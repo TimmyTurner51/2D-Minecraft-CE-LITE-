@@ -1,0 +1,92 @@
+
+converts:
+  - name: CLASSICB
+    palette: xlibc
+    tilesets:
+      tile-width: 16
+      tile-height: 16
+      images:
+      - Textures/Classic/MC2DBLOCKS.png
+    transparent-color-index: 0
+
+  - name: CLASSICP
+    palette: xlibc
+    tilesets:
+      tile-width: 16
+      tile-height: 16
+      images:
+      - Textures/Classic/MC2DPLANTS.png
+    transparent-color-index: 0
+
+  - name: CLASSICI
+    palette: xlibc
+    tilesets:
+      tile-width: 16
+      tile-height: 16
+      images:
+      - Textures/Classic/MC2DITEMS.png
+    transparent-color-index: 0
+
+  - name: CLASSICF
+    palette: xlibc
+    tilesets:
+      tile-width: 16
+      tile-height: 16
+      images:
+      - Textures/Classic/MC2DFOLIAGE.png
+    transparent-color-index: 0
+
+  - name: images
+    palette: xlibc
+    transparent-color-index: 0
+    images:
+      - Head_1.png
+      - Head_2.png
+      - Head_3.png
+      - Head_4.png
+      - Head_Pumpkin.png
+      - Arm_1.png
+      - Arm_2.png
+      - Arm_3.png
+      - Arm_4.png
+      - Body_1.png
+      - Body_2.png
+      - Body_3.png
+      - Body_4.png
+      - Leg_1.png
+      - Leg_2.png
+      - Leg_3.png
+      - Leg_4.png
+      - heart_full.png
+      - heart_half.png
+      - heart_empty.png
+      - hunger_full.png
+      - hunger2.png
+      - hunger3.png
+      - hunger_empty.png
+
+outputs:
+  - type: c
+    converts:
+      - images
+
+  - type: appvar
+    name: CLASSICB
+    converts:
+      - CLASSICB
+
+  - type: appvar
+    name: CLASSICP
+    converts:
+      - CLASSICP
+
+  - type: appvar
+    name: CLASSICI
+    converts:
+      - CLASSICI
+
+  - type: appvar
+    name: CLASSICF
+    converts:
+      - CLASSICF
+
