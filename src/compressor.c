@@ -60,7 +60,7 @@ int zx7_Compress(char *dest,char *src,int *len,int src_len){
 
 //find optimal pattern or literal and write it to the file, returning the new input index
 unsigned int get_optimal(char *data,unsigned int data_len,unsigned int input_index){
-	unsigned int best_cost,best_len,best_offset,match_index,match_len,end_index,cost,offset,bits,value;
+	unsigned int best_cost,best_len,best_offset,match_index,match_len,end_index,cost,offset,value;  // removed bits to get rid of a warning
 	char *input_ptr;
 	char *match_ptr;
 	char *end_ptr;
