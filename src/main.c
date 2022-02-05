@@ -32,31 +32,32 @@
 
 //#define usb_callback_data_t usb_device_t
 
-void LoadBlock(char *name, int24_t spritenumber, int24_t spritesize, int24_t num);
+void LoadBlock(char *name, int16_t spritenumber, int16_t spritesize, int16_t num);
 void DrawCenteredText(char *inputstr, int centerXpos, int ypos);
 void Generator(void);
 void Game(void);
 void RenderEngine(void);
-void CacheBlocks(void);
-void LoadChunks(int24_t position);
-void Behaviors(int24_t position);
-void LoadNew(void);
+void deathScreen(void);
+void Behaviors(int16_t position, int16_t timerPos);
+void survivalInventory(void);
+void CacheBlocks(int16_t xa, int16_t ya);
+int craftingCheck(int16_t inputVal);
+void giveItem(int16_t blockID, int16_t amount);
 void creativeInventory(void);
 void input(char *string, int size);
 
 // Amount of chunks to render (chunks are 16x16) max is 5 by 5 for now
-int24_t renderX = 1, renderY = 1;
+int16_t renderX = 1, renderY = 1;
 
 // Amount of Pixels to scroll. Ranges from 1 - 16. 1 being smooth but slowest, 16 being jumpy but fastest.
-int24_t pixelAmount = 3;
+int16_t pixelAmount = 4;
 // Amount of Pixels to scroll for falling/gravity (use 1, 2, 4, 6, 8, or 16)
-int24_t gravityPixelAmount = 5;
+int16_t gravityPixelAmount = 5;
 
 int main(void)
 {
-	int24_t y;
-	gfx_Begin(); // This sets the default palette, no need to set the palette again
-	gfx_SetTransparentColor(148);
+	int16_t y;
+	gfx_Begin();
 	ti_CloseAll();
 	gfx_SetClipRegion(-17, -17, 337, 257);
 	y = 125;
@@ -68,13 +69,15 @@ int main(void)
 	gfx_End();
 }
 
-void LoadBlock(char *name, int24_t spritenumber, int24_t spritesize, int24_t num)
+void LoadBlock(char *name, int16_t spritenumber, int16_t spritesize, int16_t num)
 {
 	uint8_t *ptr;
-	ptr = os_GetAppVarData(name, NULL)->data;
-	if (spritenumber < 0)
-		spritenumber = spritenumber + 255;
-	sprites[num] = (gfx_sprite_t *)(ptr + (spritenumber * (spritesize + 2)));
+	if (spritenumber >= 0) {
+		ptr = os_GetAppVarData(name, NULL)->data;
+		sprites[num] = (gfx_sprite_t *)(ptr + (spritenumber * (spritesize + 2)));
+		// block is the RLETsprite conversion. Obviously.
+		//gfx_ConvertToRLETSprite(sprites[num], block);
+	}
 }
 
 void DrawCenteredText(char *inputstr, int centerXpos, int ypos)
@@ -85,10 +88,10 @@ void DrawCenteredText(char *inputstr, int centerXpos, int ypos)
 void Generator(void)
 {
 	uint16_t x = 0, y = 0, xb = 91, blockType = 0, terrainVal, biomeVal = 0;
-	uint16_t length = 0;
+	uint16_t lengthA = 0, lengthB = 0, testX = 0, testY = 0;
 	uint16_t groundLevel = 33, groundLevelB, pos = 0, posb = 0, posc = 0, posd = 0;
-	curPos = (MaxX * 6) + 11;
-	LoadBlock("CLASSICB", 82, 16 * 16, 0);
+	memset(WorldData, 0, sizeof WorldData);
+	LoadBlock("CLASSICB", 77, 16 * 16, 0);
 	for (x = 0; x < 320; x += 16)
 	{
 		for (y = 0; y < 240; y += 16)
@@ -106,8 +109,6 @@ void Generator(void)
 	gfx_Rectangle(90, 120, 320 - 180, 7);
 	gfx_SetColor(6);
 	gfx_SetTextFGColor(0);
-	// 0 = creative, 1 = survival, 2 = adventure
-	gamemode = 0;
 	// 0 = off, 1 = on
 	flymode = 0;
 	x = 0;
@@ -123,7 +124,8 @@ void Generator(void)
 			srand(x);
 		// randomize biome
 		// 0 = plains, 1 = desert, 2 = forest, 3 = pond/lake/ocean, 4 = plains village, 5 = sand village
-		if (randInt(0, 8 * (1 * (worldType == 3))) == 0)
+		if (worldType == 1) biomeVal = 0;
+		if (worldType != 1 && randInt(0, 8) == 0)
 			biomeVal = randInt(0, 5);
 
 		// since sand village generation isn't implemented yet, change it to desert instead until it's added
@@ -131,60 +133,65 @@ void Generator(void)
 			biomeVal = 1;
 
 		// hills
-		terrainVal = 1 + (randInt(0, 1) * randInt(0, 3) * (biomeVal != 3));
-		if ((groundLevel > 1) && (groundLevel < MaxY) && (randInt(0, 12) != 1))
-			groundLevel += (worldType != 1) * randInt(0 - terrainVal, terrainVal);
+		if (worldType != 1) {
+			terrainVal = 1 + (randInt(0, 1) * randInt(0, 3) * (biomeVal != 3));
+			if ((groundLevel > 1) && (groundLevel < MaxY) && (randInt(0, 12) != 1))
+				groundLevel += (worldType != 1) * randInt(0 - terrainVal, terrainVal);
+		}
 
-		// tree generation
-		if (biomeVal != 1 && randInt(0, 8 - ((biomeVal == 1) * 3)) == 0 && WorldData[x + (groundLevel * MaxX)] != 234)
-		{
-			// oak tree
-			// 240 is ID for oak leaves
-			pos = groundLevel - 7;
-			WorldData[x + (pos * MaxX)] = 240;
-			WorldData[x - 1 + (pos * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
-			WorldData[x + 1 + (pos * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
-			WorldData[x + ((pos + 1) * MaxX)] = 240;
-			WorldData[x - 1 + ((pos + 1) * MaxX)] = 240;
-			WorldData[x + 1 + ((pos + 1) * MaxX)] = 240;
-			WorldData[x + ((pos + 2) * MaxX)] = 240;
-			WorldData[x - 1 + ((pos + 2) * MaxX)] = 240;
-			WorldData[x - 1 + ((pos + 3) * MaxX)] = 240;
-			WorldData[x - 2 + ((pos + 2) * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
-			WorldData[x - 2 + ((pos + 3) * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
-			WorldData[x + 1 + ((pos + 2) * MaxX)] = 240;
-			WorldData[x + 1 + ((pos + 3) * MaxX)] = 240;
-			WorldData[x + 2 + ((pos + 2) * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
-			WorldData[x + 2 + ((pos + 3) * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
-			WorldData[x + ((pos + 2) * MaxX)] = 163;
-			WorldData[x + ((pos + 3) * MaxX)] = 163;
-			WorldData[x + ((pos + 4) * MaxX)] = 163;
-			WorldData[x + ((pos + 5) * MaxX)] = 163;
-			WorldData[x + ((pos + 6) * MaxX)] = 163;
-		}
-		if (biomeVal != 1 && (randInt(0, 8 - ((biomeVal == 1) * 3)) == 0) && (WorldData[x + (groundLevel * MaxX)] != 234))
-		{
-			// spruce
-			pos = groundLevel - 6;
-			WorldData[x + (pos * MaxX)] = 241;
-			WorldData[x + ((pos + 1) * MaxX)] = 241;
-			WorldData[x - 1 + ((pos + 1) * MaxX)] = 241;
-			WorldData[x + 1 + ((pos + 1) * MaxX)] = 241;
-			WorldData[x + ((pos + 2) * MaxX)] = 219;
-			WorldData[x + ((pos + 3) * MaxX)] = 219;
-			WorldData[x + ((pos + 4) * MaxX)] = 219;
-			WorldData[x + ((pos + 5) * MaxX)] = 219;
-			if (randInt(0, 3) == 1)
+		if (worldType != 1) {
+			// tree generation
+			if (biomeVal != 1 && randInt(0, 8 - ((biomeVal == 1) * 3)) == 0 && WorldData[x + (groundLevel * MaxX)] != 234)
 			{
-				WorldData[x - 1 + ((pos + 3) * MaxX)] = 241;
-				WorldData[x + 1 + ((pos + 3) * MaxX)] = 241;
-				WorldData[x - 1 + ((pos + 5) * MaxX)] = 241;
-				WorldData[x + 1 + ((pos + 5) * MaxX)] = 241;
-				WorldData[x - 2 + ((pos + 5) * MaxX)] = 241;
-				WorldData[x + 2 + ((pos + 5) * MaxX)] = 241;
+				// oak tree
+				pos = groundLevel - 7;
+				WorldData[x + (pos * MaxX)] = 240;
+				WorldData[x - 1 + (pos * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + 1 + (pos * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + ((pos + 1) * MaxX)] = 240;
+				WorldData[x - 1 + ((pos + 1) * MaxX)] = 240;
+				WorldData[x + 1 + ((pos + 1) * MaxX)] = 240;
+				WorldData[x + ((pos + 2) * MaxX)] = 240;
+				WorldData[x - 1 + ((pos + 2) * MaxX)] = 240;
+				WorldData[x - 1 + ((pos + 3) * MaxX)] = 240;
+				WorldData[x - 2 + ((pos + 2) * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x - 2 + ((pos + 3) * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + 1 + ((pos + 2) * MaxX)] = 240;
+				WorldData[x + 1 + ((pos + 3) * MaxX)] = 240;
+				WorldData[x + 2 + ((pos + 2) * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + 2 + ((pos + 3) * MaxX)] = (240 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
+				WorldData[x + ((pos + 2) * MaxX)] = 150;
+				WorldData[x + ((pos + 3) * MaxX)] = 150;
+				WorldData[x + ((pos + 4) * MaxX)] = 150;
+				WorldData[x + ((pos + 5) * MaxX)] = 150;
+				WorldData[x + ((pos + 6) * MaxX)] = 150;
 			}
+			if (biomeVal != 1 && (randInt(0, 8 - ((biomeVal == 1) * 3)) == 0) && (WorldData[x + (groundLevel * MaxX)] != 234))
+			{
+				// spruce
+				pos = groundLevel - 6;
+				WorldData[x + (pos * MaxX)] = 241;
+				WorldData[x + ((pos + 1) * MaxX)] = 241;
+				WorldData[x - 1 + ((pos + 1) * MaxX)] = 241;
+				WorldData[x + 1 + ((pos + 1) * MaxX)] = 241;
+				WorldData[x + ((pos + 2) * MaxX)] = 200;
+				WorldData[x + ((pos + 3) * MaxX)] = 200;
+				WorldData[x + ((pos + 4) * MaxX)] = 200;
+				WorldData[x + ((pos + 5) * MaxX)] = 200;
+				if (randInt(0, 3) == 1)
+				{
+					WorldData[x - 1 + ((pos + 3) * MaxX)] = 241;
+					WorldData[x + 1 + ((pos + 3) * MaxX)] = 241;
+					WorldData[x - 1 + ((pos + 5) * MaxX)] = 241;
+					WorldData[x + 1 + ((pos + 5) * MaxX)] = 241;
+					WorldData[x - 2 + ((pos + 5) * MaxX)] = 241;
+					WorldData[x + 2 + ((pos + 5) * MaxX)] = 241;
+				}
+			}
+			// jungle = 118
+			// dark oak = 72
+			// acacia = 3
 		}
-		// jungle = 128
 
 		// foliage start at MaxSprites[0] + 1
 		// plants start at MaxSprites[0] + MaxSprites[3] + 1
@@ -259,33 +266,85 @@ void Generator(void)
 		}
 
 		// Village Generation
-		if (biomeVal == 4 && groundLevel >= 34 && x >= 21)
+		if (biomeVal == 4 && (groundLevel >= 34 || worldType == 1) && x >= 21)
 		{
 			// 7 is the size of a 5-block long/small house, plus 2 for 1 block ground spacing on each side
 			// we can generate wider buildings, that are 12 blocks long + 2 for ground blocks (again, 1 on each side)
-			length = 7 * randInt(3, 7);
+			lengthA = randInt(3, 7);
+			lengthB = 0;
 			posd = 8;
-			groundLevelB = groundLevel;
-			for (posb = x - length; posb < x; posb++)
+			// left-right
+			for (posb = x - lengthA * 7; posb < x; posb++)
 			{
-				for (posc = 0; posc < groundLevelB + posd; posc++)
+				// up-down
+				for (posc = groundLevel; posc < groundLevel + posd; posc++)
 				{
-					WorldData[posb + (posc * MaxX)] = 0;
+					//WorldData[posb + (posc * MaxX)] = 0;
 					// gravel path
-					if (posc == groundLevelB)
-						WorldData[posb + (posc * MaxX)] = 105;
+					if (posc == groundLevel)
+						WorldData[posb + (posc * MaxX)] = 84;
 					// dirt
-					if (posc > groundLevelB)
-						WorldData[posb + (posc * MaxX)] = 83;
+					if (posc > groundLevel)
+						WorldData[posb + (posc * MaxX)] = 78;
 				}
 				// houses
 				// small house (5x5)
 				// Oak planks (ID is 164)
-				WorldData[posb + 1 + ((groundLevelB - 3) * MaxX)] = 164;
-				WorldData[posb + 5 + ((groundLevelB - 3) * MaxX)] = 164;
+				if (posb >= (x - (lengthA * 7)) + (lengthB + 1) && posb <= (x - (lengthA * 7)) + (lengthB + 5)) {
+					// left wall
+					WorldData[(lengthB + 1) + ((groundLevel) * MaxX)] = 151;
+					WorldData[(lengthB + 1) + ((groundLevel - 1) * MaxX)] = 151;
+					WorldData[(lengthB + 1) + ((groundLevel - 2) * MaxX)] = 151;
+					WorldData[(lengthB + 1) + ((groundLevel - 3) * MaxX)] = 151;
+					WorldData[(lengthB + 1) + ((groundLevel - 4) * MaxX)] = 151;
+					// right wall
+					WorldData[(lengthB + 5) + ((groundLevel) * MaxX)] = 151;
+					WorldData[(lengthB + 5) + ((groundLevel - 1) * MaxX)] = 151;
+					WorldData[(lengthB + 5) + ((groundLevel - 2) * MaxX)] = 151;
+					WorldData[(lengthB + 5) + ((groundLevel - 3) * MaxX)] = 151;
+					WorldData[(lengthB + 5) + ((groundLevel - 4) * MaxX)] = 151;
+					// roof
+					WorldData[(lengthB + 2) + ((groundLevel - 4) * MaxX)] = 152;
+					WorldData[(lengthB + 3) + ((groundLevel - 4) * MaxX)] = 152;
+					WorldData[(lengthB + 4) + ((groundLevel - 4) * MaxX)] = 152;
+					// fill
+					for (testX = lengthB + 2; testX < lengthB + 5; testX++) {
+						for (testY = 0; testY < 4; testY++) {
+							WorldData[testX + ((groundLevel - testY) * MaxX)] = ((testY == 0) * 54);
+						}
+					}
+					// randomize for chest, crafting table, and/or bed
+						testX = randInt(0, 4);
+					// chest
+					if (testX == 0) {
+						WorldData[(lengthB + 4) + ((groundLevel - 1) * MaxX)] = 9;
+						// add more later for its contents
+					}
+					// crafting table
+					if (testX == 1) {
+						WorldData[(lengthB + 4) + ((groundLevel - 1) * MaxX)] = 58;
+					}
+					// bed
+					if (testX == 2) {
+						WorldData[(lengthB + 2) + ((groundLevel - 1) * MaxX)] = 7;
+						WorldData[(lengthB + 3) + ((groundLevel - 1) * MaxX)] = 8;
+						testX = randInt(0, 3);
+						// crafting table
+						if (testX == 0) {
+							WorldData[(lengthB + 4) + ((groundLevel - 1) * MaxX)] = 58;
+						}
+						// chest
+						if (testX == 1) {
+							WorldData[(lengthB + 4) + ((groundLevel - 1) * MaxX)] = 58;
+							// add more later for it's contents
+						}
+					}
+				}
 				// large house (12x5)
+
+
+				if (posb == (x - (lengthA * 7)) + lengthB + 7) lengthB += 7;
 			}
-			groundLevel = groundLevelB - 1;
 		}
 
 		// water generation
@@ -293,18 +352,15 @@ void Generator(void)
 		{
 			groundLevelB = groundLevel;
 			// pos is left-to-right size
-			length = randInt(6, 20);
-			for (posb = x - length; posb < x; posb++)
+			lengthA = randInt(6, 20);
+			for (posb = x - lengthA; posb < x; posb++)
 			{
 				// generates up to down
 				for (posc = 0; posc < groundLevel - posd + randInt(2, 5); posc++)
 				{
-					// WorldData[posb + (posc * MaxX)] = 0;
 					if (posc >= groundLevel)
-						WorldData[posb + (posc * MaxX)] = 233;
+						WorldData[posb + (posc * MaxX)] = 215;
 				}
-				// water source block
-				WorldData[posb + (groundLevel * MaxX)] = 233;
 			}
 			groundLevel = groundLevelB;
 		}
@@ -313,349 +369,260 @@ void Generator(void)
 		for (y = groundLevel; y < MaxY; y++)
 		{
 			// grass block
-			blockType = 102;
+			blockType = 95;
 			// dirt
 			if (y > groundLevel)
-				blockType = 83;
+				blockType = 78;
 			// desert
 			if (biomeVal == 1 && biomeVal != 5)
 			{
 				// sand
-				blockType = 204;
+				blockType = 186;
 				// sandstone
 				if (y > groundLevel + randInt(0, 4))
-					blockType = 205;
+					blockType = 187;
 			}
 			// stone
 			if (y > groundLevel + 4)
-				blockType = 222;
+				blockType = 202;
 			// ores
 			if ((y > groundLevel + 10) && (y < groundLevel + 80) && (randInt(0, 10) == 0))
-				blockType = 56;
+				blockType = 52;
 			if ((y > groundLevel + 18) && (y < groundLevel + 80) && (randInt(0, 10) == 0))
-				blockType = 122;
+				blockType = 51;
 			if ((y > groundLevel + 100) && (y < groundLevel + 130) && (randInt(0, 20) == 0))
-				blockType = 100;
+				blockType = 76;
 			if ((y > groundLevel + 130) && (y < groundLevel + 140) && (randInt(0, 20) == 0))
-				blockType = 132;
+				blockType = 83;
 			WorldData[x + (y * MaxX)] = blockType;
 		}
 		// bedrock
-		WorldData[x + ((y - 1) * MaxX)] = 16;
-
+		WorldData[x + ((y - 1) * MaxX)] = 15;
 		x++;
 	}
+	playerX = 10;
+	playerY = 0;
+	curPos = MaxX + 11;
 	curX = 11;
 	curY = 6;
+	health = 18;
+	hunger = 18;
+	damageAmount = 0;
+	damageDealt = 0;
+	while (WorldData[(playerX + ((playerY + 3) * MaxX))] == 0) {
+		playerY++;
+		curPos += MaxX;
+		WorldTimerPosY++;
+		if (WorldTimerPosY > 70) WorldTimerPosY = 0;
+	}
+	scrollX = 0;
+	scrollY = 0;
+
+	hotbar[0] = 215;
+	hotbar[5] = 32;
+
 }
 
 void Game(void)
 {
-	redraw = 1;
-	testX = playerX + 10;
-	testY = playerY + 5;
+	int16_t gravityVar = gravityPixelAmount, listPosition = 0;
+	int16_t blockAboveHead = 0, blockAtCenter = 0;
+	int16_t blockLeftCenter = 0, blockLeftBottom = 0;
+	int16_t blockRightCenter = 0, blockRightBottom = 0;
+	int16_t blockAtFeet = 0, blockBelowFeet = 0;
 	gfx_SetClipRegion(0 - 17, 0 - 17, 337, 257);
-	while (flymode == 0 && WorldData[(testX + ((testY + 3) * MaxX))] == 0)
-	{
-		testX = playerX + 10;
-		testY = playerY + 5;
-		if ((flymode == 0) && ((WorldData[(testX + ((testY + 3) * MaxX))] <= 0) || (WorldData[(testX + ((testY + 3) * MaxX))] > MaxSprites[0] + 5) || (WorldData[(testX + ((testY + 3) * MaxX))] == 233 && !kb_IsDown(kb_KeyUp)) || (WorldData[(testX + ((testY + 3) * MaxX))] == WATERENTITY && !kb_IsDown(kb_KeyUp))))
-		{
-			scrollY -= gravityPixelAmount;
-			// curY -= gravityPixelAmount;
-			testVarB++;
-			if (scrollY < -15)
-			{
-				LoadNew();
-				curPos += MaxX * ((jump == 0) + (flymode == 1));
-				// curY += (testVarB * gravityPixelAmount) * (jump + flymode == 0);
-				testVarB = 0;
-				scrollY = 0;
-				playerY++;
-				WorldTimerPosX++;
-			}
-		}
-	}
 	RenderEngine();
 
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
 
-		testX = playerX + 10;
-		testY = playerY + 5;
-
-		//if (redraw == 1)
 		RenderEngine();
 
-		testX = playerX + 10;
-		testY = playerY + 5;
+		blockAboveHead =  WorldData[playerX + (playerY * MaxX)];
+		blockLeftCenter =  WorldData[playerX - 1 + ((playerY + 1) * MaxX)];
+		blockLeftBottom =  WorldData[playerX - 1 + ((playerY + 2) * MaxX)];
+		blockRightCenter =  WorldData[playerX + 1 + ((playerY + 1) * MaxX)];
+		blockRightBottom =  WorldData[playerX + 1 + ((playerY + 2) * MaxX)];
+		blockAtCenter = WorldData[playerX + ((playerY + 1) * MaxX)]; 
+		blockAtFeet =  WorldData[playerX + ((playerY + 2) * MaxX)];
+		blockBelowFeet =  WorldData[playerX + ((playerY + 3) * MaxX)];
 
-		// auto jumps on a block
-		if ((playerY > 0) && (jump == 0) && (WorldData[(testX + ((testY + 2) * MaxX))] > 0) && (WorldData[(testX + ((testY + 2) * MaxX))] - 2 < MaxSprites[0] + 4) && (WorldData[(testX + ((testY + 2) * MaxX))] != 233) && (WorldData[(testX + ((testY + 2) * MaxX))] != WATERENTITY))
-		{
-			LoadNew();
-			// curPos -= MaxX;
-			curY++;
-			scrollY = 0;
-			playerY--;
-			WorldTimerPosY--;
-			jump = 1;
-			redraw = 1;
-		}
-		// try fixing the scrollY var glitch
-		if (scrollY < 0 && jump == 1 && flymode == 0 && (WorldData[(testX + ((testY + 3) * MaxX))] != 0 || WorldData[(testX + ((testY + 2) * MaxX))] != 0))
-		{
-			scrollY = 0;
-			curY--;
-			curPos -= MaxX;
-			jump = 0;
-			redraw = 1;
-		}
-
-		if (kb_IsDown(kb_KeyStat) || kb_IsDown(kb_KeyAlpha) || kb_IsDown(kb_KeyApps) || kb_IsDown(kb_KeyMode))
-		{
-			redraw = 1;
+		if (kb_IsDown(kb_KeyStat) || kb_IsDown(kb_KeyAlpha) || kb_IsDown(kb_KeyApps) || kb_IsDown(kb_KeyMode)) {
 			delay(100);
+			curPos += (kb_IsDown(kb_KeyStat) && curX < 20) - (kb_IsDown(kb_KeyAlpha) && curX > 1);
+			curX += (kb_IsDown(kb_KeyStat) && curX < 20) - (kb_IsDown(kb_KeyAlpha) && (curX > 1));
+			curPos += ((kb_IsDown(kb_KeyApps) && curY < 15) * MaxX) - ((kb_IsDown(kb_KeyMode) && curY > 1) * MaxX);
+			curY += (kb_IsDown(kb_KeyApps) && curY < 15) - (kb_IsDown(kb_KeyMode) && curY > 1);
 		}
 
-		curPos += (kb_IsDown(kb_KeyStat) && curX < 20) - (kb_IsDown(kb_KeyAlpha) && curX > 1);
-		curX += (kb_IsDown(kb_KeyStat) && curX < 20) - (kb_IsDown(kb_KeyAlpha) && (curX > 1));
-		curPos += ((kb_IsDown(kb_KeyApps) && curY < 15) * MaxX) - ((kb_IsDown(kb_KeyMode) && curY > 1) * MaxX);
-		curY += (kb_IsDown(kb_KeyApps) && curY < 15) - (kb_IsDown(kb_KeyMode) && curY > 1);
-
-		if (kb_IsDown(kb_KeyGraphVar))
-			creativeInventory();
-
-		if (kb_IsDown(kb_KeyYequ))
-		{
-			hotbarSel = 0;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyWindow))
-		{
-			hotbarSel = 1;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyZoom))
-		{
-			hotbarSel = 2;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyTrace))
-		{
-			hotbarSel = 3;
-			redraw = 1;
-		}
-		if (kb_IsDown(kb_KeyGraph))
-		{
-			hotbarSel = 4;
-			redraw = 1;
+		if (kb_IsDown(kb_KeyGraphVar)) {
+			if (gamemode == 0 || gamemode == 2) survivalInventory();
+			if (gamemode == 1) creativeInventory();
 		}
 
-		if (dialog != 0)
-		{
+		if (kb_IsDown(kb_KeyYequ)) hotbarSel = 0;
+		if (kb_IsDown(kb_KeyWindow)) hotbarSel = 1;
+		if (kb_IsDown(kb_KeyZoom)) hotbarSel = 2;
+		if (kb_IsDown(kb_KeyTrace)) hotbarSel = 3;
+		if (kb_IsDown(kb_KeyGraph)) hotbarSel = 4;
+
+
+		if (dialog != 0) {
 			dialogTimer--;
-			if (dialogTimer == 0)
-			{
-				redraw = 1;
-				dialog = 0;
+			if (dialogTimer == 0) dialog = 0;
+		}
+
+		// gives max count (64) to selected block/item in hotbar if in creative mode
+		if (gamemode == 1 && hotbar[hotbarSel] != 0) hotbar[hotbarSel + 5] = 64;
+
+		if (kb_IsDown(kb_Key2nd) && hotbar[hotbarSel] != 0 && hotbar[hotbarSel + 5] > 0)
+		{
+			if (WorldData[curPos] == 0 || WorldData[curPos] == 233 || WorldData[curPos] >= WATERENTITY) {
+				WorldData[curPos] = hotbar[hotbarSel];
+				hotbar[hotbarSel + 5]--;
+				if (hotbar[hotbarSel + 5] < 1) hotbar[hotbarSel] = 0;
 			}
 		}
-
-		blockSel = hotbar[hotbarSel];
-		if (kb_IsDown(kb_Key2nd) && (WorldData[curPos] == 0) && (blockSel != 0))
-		{
-			WorldData[curPos] = blockSel;
-			if (blockSel == 102)
-				WorldDataTimer[WorldTimerPosX + curX + ((WorldTimerPosY + curY) * 80)] = 200;
-			if (blockSel == 234)
-				WorldDataTimer[WorldTimerPosX + curX + ((WorldTimerPosY + curY) * 80)] = 10;
-			if (blockSel == 182)
-				WorldDataTimer[WorldTimerPosX + curX + ((WorldTimerPosY + curY) * 80)] = 30;
-			if (blockSel == 115)
-				WorldDataTimer[WorldTimerPosX + curX + ((WorldTimerPosY + curY) * 80)] = 3;
-			if (blockSel == 205)
-				WorldDataTimer[WorldTimerPosX + curX + ((WorldTimerPosY + curY) * 80)] = 3;
-			LoadNew();
-		}
-		if (kb_IsDown(kb_KeyDel))
-		{
-			redraw = 1;
+		if (kb_IsDown(kb_KeyDel) && WorldData[curPos] != 0) {
 			WorldData[curPos] = 0;
+			// add code here for survival and adventure (block breaks)
+			giveItem(WorldData[curPos], 1);
 		}
 
 		if (kb_IsDown(kb_KeyMath))
 		{
-			delay(140);
+			input(dialogString, 40);
 			dialogTimer = 100;
 			dialog = 1;
-			redraw = 1;
-			// 0 = creative, 1 = survival, 2 = adventure
-			gamemode++;
-			if (gamemode > 2)
-				gamemode = 0;
-			if (gamemode == 0)
-				dialogString = "Gamemode switched to Creative";
-			if (gamemode == 1)
-				dialogString = "Gamemode switched to Survival";
-			if (gamemode == 2)
-				dialogString = "Gamemode switched to Adventure";
+			// 0 = survival, 1 = creative, 2 = adventure
 		}
 
-		gfx_SetTextXY(85, 15);
-		gfx_PrintInt(curX, 1);
-		gfx_SetTextXY(155, 15);
-		gfx_PrintInt(curY, 1);
+		listPosition++;
+		if (listPosition > 7)
+			listPosition = 0;
 
-		gfx_PrintStringXY("X:", 5, 25);
-		gfx_PrintStringXY("Y:", 85, 25);
-		gfx_SetTextXY(25, 25);
-		gfx_PrintInt(playerX, 1);
-		gfx_SetTextXY(98, 25);
-		gfx_PrintInt(playerY, 1);
-		gfx_BlitBuffer();
-
-		listPos++;
-		if (listPos > 8)
-			listPos = 0;
-
-		if (kb_IsDown(kb_KeyLeft) && ((playerX > 0) || (scrollX < -1)) && ((WorldData[(testX + ((testY + 1) * MaxX))] == 0) || (WorldData[(testX + ((testY + 1) * MaxX))] != 233) || (WorldData[(testX + ((testY + 1) * MaxX))] != WATERENTITY)))
-		{
-			if (scrollX > -1)
+		keyPresses[listPosition] = (kb_IsDown(kb_KeyUp));
+		if (kb_IsDown(kb_KeyLeft) && playerX > 10 && blockLeftCenter != 0 && scrollX < 0) scrollX += pixelAmount;
+		if (kb_IsDown(kb_KeyRight) && playerX < MaxX && blockRightCenter != 0 && scrollX > -16 + 6) scrollX -= pixelAmount;
+		if (kb_IsDown(kb_KeyLeft) && playerX > 10 && (blockLeftCenter == 0 || blockLeftCenter > MaxSprites[0])) scrollX += pixelAmount;
+		if (kb_IsDown(kb_KeyRight) && playerX < MaxX && (blockRightCenter == 0 || blockLeftCenter > MaxSprites[0])) scrollX -= pixelAmount;
+		if (flymode == 1) {
+			if (kb_IsDown(kb_KeyUp) && playerY > 5 && blockAboveHead == 0) scrollY += pixelAmount;
+			if (kb_IsDown(kb_KeyDown) && playerY < MaxY && blockBelowFeet == 0) scrollY -= pixelAmount;
+			// try fixing the scrollY var glitch when you jump and noclip into a block
+			if (scrollY < 0 && jump == 1 && flymode == 0 && (WorldData[(playerX + ((playerY + 1) * MaxX))] != 0 || WorldData[(playerX + ((playerY + 2) * MaxX))] != 0))
 			{
-				LoadNew();
-				curPos--;
-				scrollX = -16;
-				playerX--;
-				WorldTimerPosX--;
+				scrollY = 0;
+				curY--;
+				curPos -= MaxX;
+				jump = 0;
 			}
-			scrollX += pixelAmount;
-			redraw = 1;
-		}
-
-		if (kb_IsDown(kb_KeyRight) && (playerX < MaxX || scrollX > -16) && ((WorldData[((testX + 1) + ((testY + 1) * MaxX))] == 0) || (WorldData[(testX + ((testY + 1) * MaxX))] != 233) || (WorldData[(testX + ((testY + 1) * MaxX))] != WATERENTITY)))
-		{
-			scrollX -= pixelAmount;
-			if (scrollX < -15)
+		}else{
+			// auto jumps on a block
+			if ((playerY > 0) && (jump == 0) && (blockAtFeet > 0) && (blockAtFeet - 2 < MaxSprites[0] + 4) && (blockAtFeet != 233) && (blockAtFeet != WATERENTITY))
 			{
-				LoadNew();
-				curPos++;
-				scrollX = 0;
-				playerX++;
-				WorldTimerPosX++;
+				curPos -= MaxX;
+				scrollY = 0;
+				playerY--;
+				WorldTimerPosY--;
+				// need to overwrite this variable so gravity isn't buggy after auto-jumping
+				blockBelowFeet = 1;
 			}
-			redraw = 1;
-		}
-
-		// fixes the bug that jump gets stuck on 1
-		if (flymode == 1 || (!(kb_IsDown(kb_KeyUp)) && jump == 1 && scrollY == 0))
-			jump = 0;
-
-		if (kb_IsDown(kb_KeyUp) && jump != 1)
-		{
-			keyPresses[listPos] = 1;
-			if (playerY > 0 && (WorldData[(testX + (testY * MaxX))] == 0 || scrollY < -1 || WorldData[(testX + ((testY + 2) * MaxX))] == 233 || WorldData[(testX + ((testY + 2) * MaxX))] == WATERENTITY))
-			{
-				if (scrollY > -1)
-				{
-					LoadNew();
-					curPos -= MaxX * flymode;
-					scrollY = -16;
-					playerY--;
-					WorldTimerPosY--;
-					if (WorldData[(testX + ((testY + 2) * MaxX))] == 233 || WorldData[(testX + ((testY + 2) * MaxX))] == WATERENTITY)
-					{
-						curPos -= MaxX;
+			if (kb_IsDown(kb_KeyUp) && playerY > 5 && blockAboveHead == 0 && jump == 0) {
+				jump = 1;
+				scrollY += 16;
+				curY++;
+				playerY--;
+				WorldTimerPosY--;
+			}else{
+				if (blockBelowFeet == 0 && jump != 1) {
+					scrollY -= pixelAmount;
+					if (scrollY <= -16) {
+						playerY++;
+						WorldTimerPosY++;
+						curPos += MaxX;
+						scrollY = 0;
+						jump = 0;
 					}
 				}
-				if (WorldData[(testX + ((testY + 3) * MaxX))] != 0)
-					jump = (flymode == 0);
-				if (flymode != 0 || WorldData[(testX + ((testY + 2) * MaxX))] == 233 || WorldData[(testX + ((testY + 2) * MaxX))] == WATERENTITY)
-				{
-					scrollY += pixelAmount;
+				if (jump == 1) {
+					scrollY -= pixelAmount;
+					if (scrollY <= -16) {
+						playerY++;
+						curY--;
+						WorldTimerPosY++;
+						scrollY = -16;
+						jump = 0;
+					}
 				}
-				else
-				{
-					scrollY += 16 * jump;
-					curPos -= MaxX;
-				}
-			}
-			jump = 1;
-			redraw = 1;
-		}else{
-			keyPresses[listPos] = 0;
-			// gravity
-			if ((flymode == 0) && ((WorldData[(testX + ((testY + 3) * MaxX))] <= 0) || (WorldData[(testX + ((testY + 3) * MaxX))] > MaxSprites[0] + 5) || (WorldData[(testX + ((testY + 3) * MaxX))] == 233 && !kb_IsDown(kb_KeyUp)) || (WorldData[(testX + ((testY + 3) * MaxX))] == WATERENTITY && !kb_IsDown(kb_KeyUp))))
-			{
-				scrollY -= gravityPixelAmount;
-				testVarB++;
-				if (scrollY < -15)
-				{
-					LoadNew();
-					curPos += MaxX;
-					testVarB = 0;
-					scrollY = 0;
-					playerY++;
-					WorldTimerPosY++;
-					jump = 0;
-				}
-				redraw = 1;
 			}
 		}
+		playerX += (scrollX < -16) - (scrollX > 0);
+		playerY += (scrollY < -16) - (scrollY > 0);
+		WorldTimerPosX += (scrollX < -16) - (scrollX > 0);
+		WorldTimerPosY += (scrollY < -16) - (scrollY > 0);
+		if (scrollX > 0) {
+			curPos--;
+			scrollX = -16 + (pixelAmount - -scrollX);
+			WorldTimerPosX--;
+		}
+		if (scrollX < -16) {
+			curPos++;
+			scrollX = (scrollX + pixelAmount) + 16;
+			WorldTimerPosX++;
+		}
+		if (scrollY > 0) {
+			curPos -= MaxX;
+			scrollY = -16 + (pixelAmount - -scrollY);
+			WorldTimerPosY--;
+		}
+		if (scrollY < -16) {
+			curPos += MaxX;
+			scrollY = (scrollY + pixelAmount) + 16;
+			WorldTimerPosY++;
+		}
+
 
 		// double up to toggle fly mode
-		testVar = 0;
-		x = 0;
-		y = 0;
-		for (pos = 0; pos < 8; pos++)
-		{
-			if (keyPresses[pos] != 0 && keyPresses[pos + 1] == 0 && x != 0 && y == 0)
-				y = pos;
-			if (keyPresses[pos] != 0 && keyPresses[pos + 1] == 0 && x == 0)
-				x = pos;
-		}
-		// 0 1 1 0 1 0 0 0 (as an example)
-		if (y - x >= 1 && (!(kb_IsDown(kb_KeyUp))))
-		{
-			timer = 0;
-			dialogTimer = 50;
-			dialog = 1;
-			redraw = 1;
-			// 0 = off, 1 = on
-			flymode++;
-			if (flymode > 1)
-				flymode = 0;
-			if (flymode == 0)
-				dialogString = "Fly Mode toggled Off";
-			if (flymode == 1)
-				dialogString = "Fly Mode toggled On";
+		if (gamemode != 0 && gamemode != 2) {
+			testVar = 0;
+			x = 0;
+			y = 0;
 			for (pos = 0; pos < 8; pos++)
 			{
-				keyPresses[pos] = 0;
+				if (keyPresses[pos] != 0 && keyPresses[pos + 1] == 0 && x != 0 && y == 0)
+					y = pos;
+				if (keyPresses[pos] != 0 && keyPresses[pos + 1] == 0 && x == 0)
+					x = pos;
 			}
-			listPos = 0;
-		}
-
-		// turn off fly mode if you touch the ground
-		if (kb_IsDown(kb_KeyDown) && flymode == 1 && playerY < MaxY - 15 && WorldData[(testX + ((testY + 3) * MaxX))] != 0 && WorldData[(testX + ((testY + 3) * MaxX))] != 233 && WorldData[(testX + ((testY + 3) * MaxX))] != WATERENTITY)
-			flymode = 0;
-
-		// can add a ladder test to this var later as well, so you can go up and down on the blocks
-		testVar = flymode;
-		if (kb_IsDown(kb_KeyDown) && (testVar != 0) && (playerY < MaxY - 15) && (WorldData[(testX + ((testY + 3) * MaxX))] == 0))
-		{
-			scrollY -= pixelAmount;
-			if (scrollY < -15)
+			// 0 1 1 0 1 0 0 0 (as an example)
+			if (y - x >= 1) // && (!(kb_IsDown(kb_KeyUp))))
 			{
-				LoadNew();
-				curPos += MaxX;
-				scrollY = 0;
-				playerY++;
-				WorldTimerPosY++;
+				timer = 0;
+				dialogTimer = 50;
+				dialog = 1;
+				// 0 = off, 1 = on
+				flymode++;
+				if (flymode > 1)
+					flymode = 0;
+				if (flymode == 0)
+					strcpy(dialogString, "Fly Mode toggled Off");
+				if (flymode == 1)
+					strcpy(dialogString, "Fly Mode toggled On");
+				memset(keyPresses, 0, sizeof keyPresses);
+				listPosition = 0;
 			}
-			redraw = 1;
+			// turn off fly mode if you touch the ground
+			if (kb_IsDown(kb_KeyDown) && flymode == 1 && playerY < MaxY - 15 && WorldData[(playerX + ((playerY + 3) * MaxX))] != 0 && WorldData[(playerX + ((playerY + 3) * MaxX))] != 233 && WorldData[(playerX + ((playerY + 3) * MaxX))] != WATERENTITY)
+				flymode = 0;
 		}
+		
+		if (WorldTimerPosX > 59) WorldTimerPosX = 0;
+		if (WorldTimerPosX < 1) WorldTimerPosX = 60;
+		if (WorldTimerPosY > 64) WorldTimerPosY = 0;
+		if (WorldTimerPosY < 1) WorldTimerPosY = 65;
+
 	}
 
 	// save the world data, playerX, playerY, curPos, curX, curY, timeofday, etc...
@@ -690,11 +657,15 @@ void Game(void)
 
 void RenderEngine(void)
 {
-	int24_t blockValLeft = 0, blockValRight = 0, blockValTop = 0, blockValBottom = 0;
+	int16_t blockValLeft = 0, blockValRight = 0, blockValTop = 0, blockValBottom = 0, timerX, timerY;
 	// draw sky
 	// try gfx_Darken(colorValue) as time var increments
 	// so maybe day/night transitioning would appear smoother
+	// speedup by filling screen red and overwriting if no damage was dealt
+	gfx_FillScreen(224);
+	if (health >= 0)
 	gfx_FillScreen(dayColors[timeofday]);
+	damageDealt = 0;
 	dayTimer++;
 	if (dayTimer >= 500)
 	{
@@ -704,64 +675,101 @@ void RenderEngine(void)
 	if (timeofday > 4)
 		timeofday = 0;
 
-	if (playerX >= 0 && playerX <= MaxX && playerY >= 0 && playerY <= MaxY)
-		pos = (playerX + (playerY * MaxX));
+//	count = 0;
+//	CacheBlocks(playerX, playerY);
 
-	if (WorldTimerPosX > renderX * 16) WorldTimerPosX = 0;
-	if (WorldTimerPosX < 0) WorldTimerPosX = renderX * 16;
-	if (WorldTimerPosY > renderY * 16) WorldTimerPosY = 0;
-	if (WorldTimerPosY < 0) WorldTimerPosY = renderY * 16;
-	//LoadChunks(pos);
-	LoadChunks(WorldTimerPosX + (WorldTimerPosY * (renderY * 16)));
-
-	// cache relevant block ID's with sprite data
-	testX = playerX;
-	testY = playerY;
-	count = 0;
-	CacheBlocks();
-
+	timerX = WorldTimerPosX;
+	timerY = WorldTimerPosY;
+	testX = playerX - 10;
+	testY = playerY - 5;
+	for (render = 0; render < 20 * 15; render++)
+	{
+		pos = (testX + (testY * MaxX));
+		Behaviors(pos, timerX + timerY * 80);
+		testX++;
+		timerX++;
+		if (timerX > WorldTimerPosX) timerX = WorldTimerPosX;
+		if (testX >= playerX + 21) {
+			testX = playerX - 10;
+			testY++;
+			timerY++;
+			if (timerY > WorldTimerPosY) timerY = WorldTimerPosY;
+		}
+	}
+	timerX = WorldTimerPosX;
+	timerY = WorldTimerPosY;
+	testX = playerX - 10;
+	testY = playerY - 5;
 	drawX = scrollX - 8;
 	drawY = scrollY;
-	testX = playerX;
-	testY = playerY;
-	gfx_SetColor(32);
 	for (render = 0; render < 22 * 16; render++)
 	{
+		gfx_SetColor(32);
 		pos = (testX + (testY * MaxX));
 		// draw the shadowing box (not for water, lava, etc.)
 		blockValLeft = WorldData[pos - 1];
 		blockValRight = WorldData[pos + 1];
 		blockValTop = WorldData[pos - MaxX];
 		blockValBottom = WorldData[pos + MaxX];
-		gfx_SetTransparentColor(255);
-		// set transparent colors for foliage and flowers
-		if (WorldData[pos] - 1 >= MaxSprites[0])
-			gfx_SetTransparentColor(148);
-		// prep for possible future shadowing system updates
-		// overrides shadowing for water
-		if (WorldData[pos] == 233 || WorldData[pos] == WATERENTITY)
+		// overrides shadowing for water and any values above or equal to what WATERENTITY is defined as.
+		if (WorldData[pos] == 233 || WorldData[pos] >= WATERENTITY)
 			blockValTop = 0;
-		if (shadowing != 0 && WorldData[pos] > 0 && WorldData[pos] < MaxSprites[0] && WorldData[pos] != 233 && WorldData[pos] != WATERENTITY && blockValLeft - 1 < MaxSprites[0] && blockValRight - 1 < MaxSprites[0] && blockValTop - 1 < MaxSprites[0] && blockValBottom - 1 < MaxSprites[0])
-			gfx_FillRectangle(drawX, drawY, 16, 16);
 		if ((WorldData[pos] != 0) && ((shadowing == 0) || (shadowing != 0 && ((blockValLeft == 0 || blockValRight == 0 || blockValTop == 0 || blockValBottom == 0) || (blockValLeft > MaxSprites[0] || blockValRight > MaxSprites[0] || blockValTop > MaxSprites[0] || blockValBottom > MaxSprites[0])))))
 		{
-			gfx_SetTextXY(5, 5);
-			gfx_PrintInt(count, 1);
-			for (listPos = 0; listPos < count; listPos++) {
-				if (WorldData[pos] == WorldDataSprites[listPos])
-					gfx_TransparentSprite(sprites[listPos], drawX, drawY);
-			}
+			// check if it's a block
+			if (WorldData[pos] <= MaxSprites[0])			// WorldData[pos] - 1
+				LoadBlock("CLASSICB", WorldData[pos] - 1, 16 * 16, 0);
+			// check if it's foliage
+			if (WorldData[pos] >= MaxSprites[0] && WorldData[pos] <= MaxSprites[0] + MaxSprites[3])
+				LoadBlock("CLASSICF", WorldData[pos] - 1 - MaxSprites[0], 16 * 16, 0);
+			// check if it's plants
+			if (WorldData[pos] >= MaxSprites[0] + MaxSprites[3] && WorldData[pos] <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
+				LoadBlock("CLASSICP", WorldData[pos] - 1 - (MaxSprites[0] + MaxSprites[3]), 16 * 16, 0);
+			// load water sprite if neccessary
+			if (WorldData[pos] >= WATERENTITY && WorldData[pos] <= WATERENTITY + 7)
+				LoadBlock("CLASSICB", 214, 16 * 16, 0);
+//			gfx_SetTextXY(5, 5);
+//			gfx_PrintInt(count, 1);
+//			for (listPos = 0; listPos < count; listPos++) {
+//				if (WorldData[pos] == WorldDataSprites[listPos]) {
+//					gfx_ConvertToRLETSprite(sprites[0], block);
+//					gfx_RLETSprite(block, drawX, drawY);
+//				}
+//			}
+
+			if (WorldData[pos] != 0) gfx_TransparentSprite(sprites[0], drawX, drawY);
+			gfx_SetColor(dayColors[timeofday]);
+			if (WorldData[pos] >= WATERENTITY && WorldData[pos] <= WATERENTITY + 7)
+				gfx_FillRectangle(drawX, drawY, 16, (WorldData[pos] - WATERENTITY) * 2);
+		}else{
+			if (WorldData[pos] != 0)
+				gfx_FillRectangle(drawX, drawY, 16, 16);
 		}
-		drawX += 16;
-		testX++;
-		if (testX >= playerX + 22)
-		{
-			testX = playerX;
-			testY++;
-			drawX = scrollX - 8;
-			drawY += 16;
+		drawY += 16;
+		testY++;
+		timerY++;
+		if (timerY > WorldTimerPosY) timerY = WorldTimerPosY;
+		if (testY >= playerY + 11) {
+			testY = playerY - 5;
+			testX++;
+			timerX++;
+			if (timerX > WorldTimerPosX) timerX = WorldTimerPosX;
+			drawY = scrollY;
+			drawX += 16;
 		}
 	}
+
+	gfx_SetTextFGColor(0);
+	gfx_SetTextXY(25, 25);
+	gfx_PrintString("X:");
+	gfx_PrintInt(playerX, 1);
+	gfx_SetTextXY(98, 25);
+	gfx_PrintString("Y:");
+	gfx_PrintInt(playerY, 1);
+
+
+	gfx_SetTextXY(10, 10);
+	gfx_PrintInt(WorldData[curPos], 1);
 
 
 	// cursor
@@ -769,22 +777,38 @@ void RenderEngine(void)
 	if (timeofday > 2) gfx_SetColor(254);
 	gfx_Rectangle(scrollX + (curX * 16) - 8, scrollY + (curY * 16), 16, 16);
 
+	// add health, hunger, and exp bars for survival and adventure modes
+	if (gamemode == 0 || gamemode == 2) {
+		gfx_SetTransparentColor(148);
+		y = 0;
+		for (x = 4; x < 9 * 8; x += 8) {
+			if (y > health) {
+			gfx_TransparentSprite(heart_empty, x, 4);
+			}else{
+				if (y <= health)
+				gfx_TransparentSprite(heart_full, x, 4);
+				if (!(y % 2) && y == health)
+				gfx_TransparentSprite(heart_half, x, 4);
+			}
+			y += 2;
+		}
+		gfx_SetTransparentColor(7);
+	}
+
+
 	// revamped hotbar
 	// (update: Disappears when entering the inventory, becuase this was visible even when overlayed)
-	if (!kb_IsDown(kb_KeyGraphVar))
+	if (!kb_IsDown(kb_KeyGraphVar) || health <= 0)
 	{
 		gfx_SetColor(149);
-		gfx_Rectangle(116, 219, 5 * 18 + 2, 20);
-		for (x = 0; x < 5; x++)
-		{
+		gfx_SetTextFGColor(254);
+		gfx_Rectangle(116, 218, 5 * 18 + 2, 20);
+		for (x = 0; x < 5; x++) {
 			gfx_SetColor(149);
-			if (x == hotbarSel)
-				gfx_SetColor(74);
-			gfx_Rectangle(117 + (x * 18), 220, 18, 18);
+			if (x == hotbarSel) gfx_SetColor(74);
+			gfx_Rectangle(117 + (x * 18), 219, 18, 18);
 			gfx_Rectangle(118 + (x * 18), 220, 17, 17);
-
-			if (hotbar[x] != 0)
-			{
+			if (hotbar[x] != 0) {
 				if (hotbar[x] <= MaxSprites[0])
 					LoadBlock("CLASSICB", hotbar[x] - 1, 16 * 16, 0);
 				// check if it's foliage
@@ -793,10 +817,18 @@ void RenderEngine(void)
 				// check if it's plants
 				if (hotbar[x] > MaxSprites[0] + MaxSprites[3] && hotbar[x] <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
 					LoadBlock("CLASSICP", hotbar[x] - 1 - (MaxSprites[0] + MaxSprites[3]), 16 * 16, 0);
-				gfx_TransparentSprite(sprites[0], 118 + (x * 18), 221);
+				gfx_TransparentSprite(sprites[0], 119 + (x * 18), 221);
+			}
+		}
+		if (gamemode == 0 || gamemode == 2) {
+			for (x = 0; x < 5; x++) {
+				gfx_SetTextXY(117 + (x * 18) + 10, 231);
+				if (hotbar[x] != 0) gfx_PrintInt(hotbar[x + 5], 1);
 			}
 		}
 	}
+
+	if (health <= 0) deathScreen();
 
 	// dialog/pop up text
 	if (dialog != 0)
@@ -804,31 +836,137 @@ void RenderEngine(void)
 		gfx_SetColor(181);
 		gfx_FillRectangle(2, 2, 316, 14);
 		gfx_SetTextFGColor(0);
-		gfx_PrintStringXY(dialogString, 4, 4);
+		gfx_PrintStringXY(dialogString, 6, 6);
 	}
 
 	// player
-	gfx_TransparentSprite(Head_1, 16 * 9 + 9, 16 * 5 + 16);
-	gfx_TransparentSprite(Body_1, 16 * 9 + 11, 16 * 5 + 24);
+	gfx_TransparentSprite(Head_1, 16 * 9 + 9, 16 * 5 + 15);
+	gfx_TransparentSprite(Body_1, 16 * 9 + 11, 16 * 5 + 23);
 	gfx_TransparentSprite(Leg_1, 16 * 9 + 11, 16 * 5 + 35);
 
 	gfx_BlitBuffer();
 }
 
-void CacheBlocks(void)
+void deathScreen(void)
 {
-	for (render = 0; render < 20 * 15; render++) {
-		pos = testX + (testY * MaxX);
-		if (WorldData[pos] != 0) {
-			// check from beginning to the first empty position
-			// use drawX variable just to test things with, rather than making a new variable
-			drawX = 0;
-			for (listPos = 0; listPos < count; listPos++) {
-				if (WorldData[pos] != WorldDataSprites[listPos]) drawX++;
+	int16_t y;
+	// death screen
+	for (y = 100; y < 140; y += 20) {
+		gfx_SetColor(148);
+		gfx_FillRectangle(40, y, 240, 15);
+		gfx_SetColor(74);
+		gfx_Rectangle(40, y, 240, 15);
+		gfx_Rectangle(41, y + 1, 238, 13);
+	}
+	y = 100;
+	while (!(kb_IsDown(kb_KeyClear))) {
+		kb_Scan();
+		DrawCenteredText("Respawn", 169, 105);
+		DrawCenteredText("Back to Main Menu", 160, 125);
+		gfx_SetColor(254);
+		if ((kb_IsDown(kb_KeyUp) && y != 100) && (kb_IsDown(kb_KeyDown) && y != 120))
+			gfx_SetColor(74);
+		gfx_Rectangle(40, y, 240, 15);
+		gfx_Rectangle(41, y + 1, 238, 13);
+		if (kb_IsDown(kb_KeyUp)) y = 100;
+		if (kb_IsDown(kb_KeyDown)) y = 120;
+		gfx_BlitBuffer();
+	}
+}
+
+void Behaviors(int16_t position, int16_t timerPos)
+{
+
+		WorldDataTimer[timerPos] -= (WorldDataTimer[timerPos] != 0);
+
+		// grass turns to dirt
+
+
+		// remove water entities if water source was deleted
+		// vertical
+		if (WorldData[position] == WATERENTITY && WorldDataTimer[timerPos] < 1) {
+			if (WorldData[position - MaxX] != 215 && WorldData[position - MaxX] < WATERENTITY)
+			{
+				WorldData[position] = 0;
+				WorldDataTimer[timerPos + 80] = 3;
 			}
-			if (drawX == count) {
+		}
+		// water flows downward
+		if (WorldDataTimer[timerPos] < 1 && (WorldData[position] == 215 || (WorldData[position] >= WATERENTITY && WorldData[position] <= WATERENTITY + 7)) && (WorldData[position + MaxX] == 0 || WorldData[position + MaxX] > WATERENTITY || WorldData[position + MaxX] >= MaxSprites[0] + MaxSprites[3] + 1))
+		{
+			if (WorldData[position + MaxX] >= MaxSprites[0] + MaxSprites[3] + 1 && WorldData[position + MaxX] < WATERENTITY) {
+				// give the player the flower the water broke.
+				giveItem(WorldData[position + MaxX], 0);
+			}
+			WorldData[position + MaxX] = WATERENTITY;
+			WorldDataTimer[timerPos + 80] = 3;
+		}
+		// remove flowing water entities when the source was deleted
+		if (WorldData[position] > WATERENTITY && WorldData[position] < WATERENTITY + 7) {
+			if (WorldData[position - 1] < WorldData[position] && WorldData[position + 1] < WorldData[position] && WorldData[position - MaxX] != 233 && WorldData[position - MaxX] != WATERENTITY) {
+				WorldData[position]++;
+				//WorldDataTimer[timerPos - 1] = 3;
+				//WorldDataTimer[timerPos + 1] = 3;
+			}
+		}
+		// add water entities if the source is placed on top of a block
+		if (WorldData[position + MaxX] < WATERENTITY && WorldData[position + MaxX] != 0) {
+			if (WorldData[position] == 215 && WorldDataTimer[timerPos] < 1 && WorldData[position - 1] == 0) {
+				WorldData[position - 1] = WATERENTITY;
+				WorldDataTimer[timerPos - 1] = 3;
+			}
+			if (WorldData[position] == 215 && WorldDataTimer[timerPos] < 1 && WorldData[position + 1] == 0) {
+				WorldData[position + 1] = WATERENTITY;
+				WorldDataTimer[timerPos + 1] = 3;
+			}
+		}
+		// water flows sideways
+		if (WorldDataTimer[timerPos] < 1 && (WorldData[position] == 215 || (WorldData[position] >= WATERENTITY && WorldData[position] <= WATERENTITY + 7)) && WorldData[position + MaxX] < WATERENTITY)
+		{
+			if (WorldData[position] >= WATERENTITY && WorldData[position - 1] >= WorldData[position] + 2)
+				WorldData[position - 1]--;
+			if (WorldData[position - 1] == 0 && WorldData[position] != 0)
+			{
+				WorldData[position - 1] = WorldData[position] + 1;
+				WorldDataTimer[timerPos - 1] = 3;
+			}
+			if (WorldData[position] >= WATERENTITY && WorldData[position + 1] >= WorldData[position] + 2)
+				WorldData[position + 1]--;
+			if (WorldData[position + 1] == 0 && WorldData[position] != 0)
+			{
+				WorldData[position + 1] = WorldData[position] + 1;
+				WorldDataTimer[timerPos + 1] = 3;
+			}
+		}
+
+
+}
+
+void CacheBlocks(int16_t xa, int16_t ya)
+{
+	int16_t blockValLeft, blockValRight, blockValTop, blockValBottom;
+	int countVal = 0, shadowVal;
+	for (render = 0; render < 20 * 15; render++) {
+		pos = ya * MaxX + xa;
+		blockValLeft = WorldData[pos - 1];
+		blockValRight = WorldData[pos + 1];
+		blockValTop = WorldData[pos - MaxX];
+		blockValBottom = WorldData[pos + MaxX];
+		shadowVal = 0;
+		if (blockValLeft == 0 || blockValRight == 0 || blockValTop == 0 || blockValBottom == 0) shadowVal = 1;
+		if (blockValLeft > MaxSprites[0] || blockValRight > MaxSprites[0] || blockValTop > MaxSprites[0] || blockValBottom > MaxSprites[0]) shadowVal = 1;
+		// add more tests for bed, doors, glass and panes, etc.
+		if (shadowing == 0) shadowVal = 1;
+		if (WorldData[pos] != 0 && shadowVal == 1)
+		{
+			// check from beginning to the first empty position
+			countVal = 0;
+			for (listPos = 0; listPos < count; listPos++) {
+				if (WorldData[pos] != WorldDataSprites[listPos]) countVal++;
+			}
+			if (countVal == count) {
 				// the array doesn't have the ID saved, so save it now
-				WorldDataSprites[drawX] = WorldData[pos];
+				WorldDataSprites[countVal] = WorldData[pos];
 				// check if it's a block
 				if (WorldData[pos] - 1 <= MaxSprites[0])
 					LoadBlock("CLASSICB", WorldData[pos] - 1, 16 * 16, count);
@@ -838,148 +976,59 @@ void CacheBlocks(void)
 				// check if it's plants
 				if (WorldData[pos] - 1 >= MaxSprites[0] + MaxSprites[3] && WorldData[pos] - 1 <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
 					LoadBlock("CLASSICP", WorldData[pos] - 1 - (MaxSprites[0] + MaxSprites[3]), 16 * 16, count);
-				if (WorldData[pos] - 1 == WATERENTITY)
-					LoadBlock("CLASSICB", 233, 16 * 16, count);
+				// load water sprite if neccessary
+				if (WorldData[pos] - 1 >= WATERENTITY && WorldData[pos] <= WATERENTITY + 7)
+					LoadBlock("CLASSICB", 232, 16 * 16, count);
 				count++;
 			}
 		}
-		testX++;
-		if (testX >= playerX + 20) {
-			testX = playerX;
-			testY++;
+		xa++;
+		if (xa == playerX + 20) {
+			xa = playerX;
+			ya++;
 		}
 	}
 }
 
-void LoadNew(void)
-{
-	int16_t x = 0, y = 0;
-	for (x = 0; x < renderX * 16; x++) {
-		for (y = 0; y < renderY * 16; y++) {
-			WorldDataTimer[x + (y * 16)] = 0;
-		}
-	}
-	x = 0;
-	while (WorldDataSprites[x] != 0) {
-		WorldDataSprites[x] = 0;
-		x++;
-	}
-}
-
-void LoadChunks(int24_t position)
-{
-	int24_t scan = position;
-	if (position < 0)
-		error = 1;
-	for (y = 0; y < 16 * renderY; y++) {
-		for (x = 0; x < 16 * renderX; x++) {
-			Behaviors(scan);
-			scan++;
-		}
-		scan += MaxX - (renderX * 16);
-	}
-}
-
-void Behaviors(int24_t position)
-{
-	if ((WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)] > 0) && (WorldData[position] != 102))
-	{
-		WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)]--;
-		redraw = 1;
-	}
-
-	// grass turns to dirt
-	if ((WorldData[position] == 102) && (WorldData[position - MaxX] != 0) && (WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)] > -1))
-	{
-		if (WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)] == 0)
-			WorldData[position] = 83;
-		WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)]--;
-		redraw = 1;
-	}
-
-/*
-	// water flows downward
-	if ((WorldData[position] == 233) && (WorldData[position + MaxX] == 0) && (WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)] == 0))
-	{
-		WorldData[position + MaxX] = WATERENTITY;
-		WorldDataTimer[WorldTimerPosX + ((WorldTimerPosY + 1) * 80)] = 10;
-	}
-	if ((WorldData[position] == WATERENTITY) && (WorldData[position + MaxX] == 0) && (WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)] == 0))
-	{
-		WorldData[position + MaxX] = WATERENTITY;
-		WorldDataTimer[WorldTimerPosX + ((WorldTimerPosY + 1) * 80)] = 10;
-	}
-
-	// water flows sideways
-	if (((WorldData[position] == 233) || (WorldData[position] == WATERENTITY)) && (WorldData[position + MaxX] != 0) && (WorldData[position + MaxX] != WATERENTITY + 1) && (WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)] == 0))
-	{
-		if (WorldData[position + MaxX - 1] == 0)
-		{
-			WorldData[position + MaxX - 1] = WATERENTITY;
-			WorldDataTimer[WorldTimerPosX - 1 + (WorldTimerPosY * 80)] = 10;
-		}
-		if (WorldData[position + MaxX + 1] == 0)
-		{
-			WorldData[position + MaxX + 1] = WATERENTITY;
-			WorldDataTimer[WorldTimerPosX + 1 + (WorldTimerPosY * 80)] = 10;
-		}
-	}
-	if (((WorldData[position] == 233) || (WorldData[position] == WATERENTITY)) && (WorldData[position + MaxX] != 0) && (WorldData[position + MaxX] != WATERENTITY + 1) && (WorldDataTimer[WorldTimerPosX + (WorldTimerPosY * 80)] == 0))
-	{
-		if (WorldData[position - 1] == 0)
-		{
-			WorldData[position - 1] = WATERENTITY;
-			WorldDataTimer[WorldTimerPosX - 1 + (WorldTimerPosY * 80)] = 10;
-		}
-		if (WorldData[position + 1] == 0)
-		{
-			WorldData[position + 1] = WATERENTITY;
-			WorldDataTimer[WorldTimerPosX + 1 + (WorldTimerPosY * 80)] = 10;
-		}
-	}
-	*/
-
-}
-
-void creativeInventory(void)
-{
-	// need to rewrite to load all sprites onto one entire inventory
-	int24_t xpos = 10, ypos = 10, num, spritenum, tab = 0, pos = 0, hotbarpos = 0, lastPos;
-	int24_t scroll = 0, oldBlock = 0, newBlock = 0, InvCurPos = 0, lastXpos = 0, selectedFromTab = 0;
-	gfx_SetTransparentColor(31);
+void survivalInventory(void) {
+	int16_t xpos = 80, ypos = 140, num = 0, pos = 0;
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
-		num = 0;
 		gfx_SetColor(148);
-		gfx_FillRectangle(5, 5, 310, 230);
-		// scroll bar rectangle
-		gfx_SetColor(74);
-		gfx_FillRectangle(15 + (14 * 18), 10, 5, 180);
-		for (y = 10; y < 10 + (10 * 18); y += 18)
-		{
-			for (x = 10; x < 10 + (14 * 18); x += 18)
-			{
+		gfx_FillRectangle(40, 60, 240, 162);
+		// main inventory slots
+		pos = 0;
+		for (y = 140; y < 140 + (3 * 18); y += 18) {
+			for (x = 80; x < 80 + (9 * 18); x += 18) {
 				gfx_SetColor(0);
 				gfx_Rectangle(x, y, 18, 18);
-				// scroll bar
-				gfx_SetColor(181);
-				gfx_FillRectangle(15 + (14 * 18), 10 + (scroll * (180 / 9)), 5, 180 / 9);
-				gfx_SetColor(74);
-				spritenum = scroll * 14 + num;
-				if (tab == 0 && spritenum <= MaxSprites[0])
-					LoadBlock("CLASSICB", spritenum, 16 * 16, 0);
-				if (tab == 1 && spritenum <= MaxSprites[1])
-					LoadBlock("CLASSICI", spritenum, 16 * 16, 0);
-				if (tab == 2 && spritenum <= MaxSprites[2])
-					LoadBlock("CLASSICP", spritenum, 16 * 16, 0);
-				if (tab == 3 && spritenum <= MaxSprites[3])
-					LoadBlock("CLASSICF", spritenum, 16 * 16, 0);
-				if (spritenum < MaxSprites[tab])
-					gfx_TransparentSprite(sprites[0], x + 1, y + 1);
-				if (spritenum >= MaxSprites[tab])
+				if (Inventory[pos] > 0) {
+				if (Inventory[pos] <= MaxSprites[0])
+					LoadBlock("CLASSICB", Inventory[pos] - 1, 16 * 16, 0);
+				if (Inventory[pos] > MaxSprites[0] && Inventory[pos] <= MaxSprites[1])
+					LoadBlock("CLASSICI", Inventory[pos] - 1, 16 * 16, 0);
+				if (Inventory[pos] > MaxSprites[1] && Inventory[pos] <= MaxSprites[2])
+					LoadBlock("CLASSICP", Inventory[pos] - 1, 16 * 16, 0);
+				if (Inventory[pos] > MaxSprites[2] && Inventory[pos] <= MaxSprites[3])
+					LoadBlock("CLASSICF", Inventory[pos] - 1, 16 * 16, 0);
+				gfx_TransparentSprite(sprites[0], x + 1, y + 1);
+				gfx_SetTextFGColor(254);
+				}else{
+					gfx_SetColor(74);
 					gfx_FillRectangle(x + 1, y + 1, 16, 16);
-				num++;
+				}
+				pos++;
+			}
+		}
+		pos = 0;
+		for (y = 140; y < 140 + (3 * 18); y += 18) {
+			for (x = 80; x < 80 + (9 * 18); x += 18) {
+				if (Inventory[pos] > 0) {
+					gfx_SetTextXY(x + 10, y + 12);
+					gfx_PrintInt(Inventory[pos + 27], 1);
+				}
+				pos++;
 			}
 		}
 		// hotbar
@@ -1006,14 +1055,139 @@ void creativeInventory(void)
 				gfx_FillRectangle(118 + (x * 18), 201, 16, 16);
 			}
 		}
+		gfx_BlitBuffer();
 
-		/*
-				gfx_SetTextXY(6, 6);
-				gfx_PrintInt(pos, 1);
-				gfx_SetTextXY(56, 6);
-				gfx_PrintInt(newBlock, 1);
-		*/
+	}
+	delay(200);
+	kb_Scan();
+	Game();
+}
 
+int craftingCheck(int16_t inputVal) {
+	int16_t item = 0;
+
+	return item;
+}
+
+void giveItem(int16_t blockID, int16_t breaking) {
+	int16_t pos, movetoinventory = 0;
+
+	if (breaking == 1) {
+		// add code for breaking blocks based on their ID.
+	}
+
+	// first scan hotbar for the blockID
+	for (pos = 0; pos < 5; pos++) {
+		if (hotbar[pos] == 0) {
+			hotbar[pos] = blockID;
+			hotbar[pos + 5]++;
+			break;
+		}else{
+			if (hotbar[pos] == blockID && hotbar[pos + 5] < 64) {
+				hotbar[pos + 5]++;
+				break;
+			}
+			if (hotbar[pos] == blockID && hotbar[pos + 5] == 64) {
+				movetoinventory = 1;
+				break;
+			}
+		}
+	}
+
+	if (movetoinventory == 1) {
+		// the hotbar is full, so find an empty space to put the item
+		for (pos = 0; pos < 26; pos++) {
+			if (Inventory[pos] == 0) {
+				Inventory[pos] = blockID;
+				Inventory[pos + 27]++;
+				movetoinventory = 2;
+				break;
+			}else{
+				if (Inventory[pos] == blockID && Inventory[pos + 27] < 64) {
+					Inventory[pos + 27]++;
+					movetoinventory = 2;
+					break;
+				}
+			}
+		}
+	}
+
+	// Check if movetoinventory is still 1.
+	// If so, there's not enough room anywhere in player storage for the item
+
+}
+
+void creativeInventory(void)
+{
+	int16_t xpos = 28, ypos = 25, num, spritenum, tab = 0, pos = 0, hotbarpos = 0, lastPos;
+	int16_t scroll = 0, oldBlock = 0, newBlock = 0, InvCurPos = 0, lastXpos = 0, selectedFromTab = 0;
+	int16_t newBlockCount = 0, oldBlockCount = 0;
+	char *tabNames[5] = { "Building Blocks", "Items", "Plants", "Foliage", "Player" };
+	while (!(kb_IsDown(kb_KeyClear)))
+	{
+		kb_Scan();
+		num = 0;
+		gfx_SetColor(148);
+		gfx_FillRectangle(15, 5, 290, 230);
+		// scroll bar rectangle
+		gfx_SetColor(74);
+		gfx_FillRectangle(28 + (14 * 18), 24, 7, 182);
+		// scroll bar level indicator
+		gfx_SetColor(181);
+		gfx_FillRectangle(29 + (14 * 18), 25 + (scroll * (180 / 9)), 5, 180 / 9);
+		// tab names
+		if (tab == 0) LoadBlock("CLASSICB", 101, 16 * 16, 0);
+		if (tab == 1) LoadBlock("CLASSICI", 0, 16 * 16, 0);
+		if (tab == 2) LoadBlock("CLASSICP", 0, 16 * 16, 0);
+		if (tab == 3) LoadBlock("CLASSICF", 0, 16 * 16, 0);
+		if (tab == 4) LoadBlock("CLASSICB", 112, 16 * 16, 0);
+		gfx_TransparentSprite(sprites[0], 30, 8);
+		gfx_SetColor(181);
+		gfx_FillRectangle(48, 8, 14 * 18 - 20, 10);
+		gfx_SetTextFGColor(0);
+		gfx_PrintStringXY(tabNames[tab], 50, 9);
+		for (y = 25; y < 25 + (10 * 18); y += 18) {
+			for (x = 28; x < 28 + (14 * 18); x += 18) {
+				gfx_SetColor(0);
+				gfx_Rectangle(x, y, 18, 18);
+				gfx_SetColor(74);
+				spritenum = scroll * 14 + num;
+				if (tab == 0 && spritenum <= MaxSprites[0])
+					LoadBlock("CLASSICB", spritenum, 16 * 16, 0);
+				if (tab == 1 && spritenum <= MaxSprites[1])
+					LoadBlock("CLASSICI", spritenum, 16 * 16, 0);
+				if (tab == 2 && spritenum <= MaxSprites[2])
+					LoadBlock("CLASSICP", spritenum, 16 * 16, 0);
+				if (tab == 3 && spritenum <= MaxSprites[3])
+					LoadBlock("CLASSICF", spritenum, 16 * 16, 0);
+				if (spritenum < MaxSprites[tab])
+					gfx_TransparentSprite(sprites[0], x + 1, y + 1);
+				if (spritenum >= MaxSprites[tab])
+					gfx_FillRectangle(x + 1, y + 1, 16, 16);
+				num++;
+			}
+		}
+		// hotbar
+		for (x = 0; x < 5; x++) {
+			gfx_SetColor(0);
+			if (x == hotbarSel)
+			gfx_SetColor(5);
+			gfx_Rectangle(117 + (x * 18), 210, 18, 18);
+			if (hotbar[x] != 0) {
+				if (hotbar[x] <= MaxSprites[0])
+					LoadBlock("CLASSICB", hotbar[x] - 1, 16 * 16, 0);
+				// check if it's foliage
+				if (hotbar[x] > MaxSprites[0] && hotbar[x] <= MaxSprites[0] + MaxSprites[3])
+					LoadBlock("CLASSICF", hotbar[x] - 1 - MaxSprites[0], 16 * 16, 0);
+				// check if it's plants
+				if (hotbar[x] > MaxSprites[0] + MaxSprites[3] && hotbar[x] <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
+					LoadBlock("CLASSICP", hotbar[x] - 1 - (MaxSprites[0] + MaxSprites[3]), 16 * 16, 0);
+				gfx_TransparentSprite(sprites[0], 118 + (x * 18), 211);
+			}else{
+				gfx_SetColor(181);
+				gfx_FillRectangle(118 + (x * 18), 211, 16, 16);
+			}
+		}
 		// draw a item if it was selected
 		if (newBlock != 0)
 		{
@@ -1031,36 +1205,55 @@ void creativeInventory(void)
 		gfx_SetColor(255);
 		gfx_FillRectangle(xpos + 2, ypos + 8, 14, 2);
 		gfx_FillRectangle(xpos + 8, ypos + 2, 2, 14);
+
+
+		gfx_SetTextFGColor(0);
+		gfx_SetTextXY(12, 12);
+		gfx_PrintInt(pos + 1, 1);
+
+
+		gfx_SetTextFGColor(254);
+		gfx_SetTextXY(xpos + 14, ypos + 14);
+		if (newBlockCount > 1) gfx_PrintInt(newBlockCount, 1);
 		gfx_BlitBuffer();
 
 		// move cursor down to hotbar if the cursor is at the bottom, and back up
-		if (ypos == 10 + (9 * 18) && kb_IsDown(kb_KeyDown) && scroll == 8)
+		if (ypos == 25 + (9 * 18) && kb_IsDown(kb_KeyDown) && scroll == 8)
 		{
 			InvCurPos = 1;
 			lastXpos = xpos;
 			lastPos = pos;
 			hotbarpos = 0;
 			xpos = 117;
-			ypos = 200;
+			ypos = 210;
 		}
-		if (ypos == 200 && kb_IsDown(kb_KeyUp) && InvCurPos == 1)
+		if (ypos == 210 && kb_IsDown(kb_KeyUp) && InvCurPos == 1)
 		{
 			InvCurPos = 0;
 			xpos = lastXpos;
 			pos = lastPos + 14;
-			ypos = 10 + (10 * 18);
+			ypos = 25 + (10 * 18);
 		}
 		// clears the selected block if user clicks an empty space in the inventory
-		if (kb_IsDown(kb_Key2nd) && pos >= MaxSprites[tab] && ypos != 200)
-			newBlock = 0;
-		// select an item if the user presses 2nd in the inventory (not hotbar)
-		if (kb_IsDown(kb_Key2nd) && pos < MaxSprites[tab] && ypos != 200)
+		if (kb_IsDown(kb_Key2nd) && (pos >= MaxSprites[tab] || (newBlock != pos + 1 && newBlock != 0)) && ypos != 210)
 		{
-			selectedFromTab = tab;
-			newBlock = pos + 1;
+			newBlock = 0;
+			newBlockCount = 0;
+		}else{
+			// select an item if the user presses 2nd in the inventory (not hotbar)
+			if (kb_IsDown(kb_Key2nd) && pos < MaxSprites[tab] && newBlockCount < 64 && ypos != 210)
+			{
+				selectedFromTab = tab;
+				if (newBlock == pos + 1) {
+					newBlockCount++;
+				}else{
+					newBlockCount = 1;
+					newBlock = pos + 1;
+				}
+			}
 		}
 		// select/swap an item if the user presses 2nd in the hotbar only
-		if (kb_IsDown(kb_Key2nd) && ypos == 200)
+		if (kb_IsDown(kb_Key2nd) && ypos == 210)
 		{
 			oldBlock = hotbar[hotbarpos];
 			if (newBlock == 0)
@@ -1077,46 +1270,42 @@ void creativeInventory(void)
 				// check if it's plants
 				if (hotbar[hotbarpos] > MaxSprites[0] + MaxSprites[1] + MaxSprites[2] && hotbar[hotbarpos] <= MaxSprites[0] + MaxSprites[1] + MaxSprites[2] + MaxSprites[3])
 					selectedFromTab = 3;
-			}
-			else
-			{
+			}else{
 				hotbar[hotbarpos] = newBlock;
 			}
 			newBlock = oldBlock;
 		}
-		// page movement
-		if (xpos == 10 && kb_IsDown(kb_KeyLeft) && tab > 0)
-			scroll = 0;
-		if (xpos == 10 + (13 * 18) && kb_IsDown(kb_KeyRight) && tab < 3)
-			scroll = 0;
-		if (xpos == 10 && kb_IsDown(kb_KeyLeft) && tab > 0)
-		{
-			tab--;
-			scroll = 0;
-			pos = 0;
-		}
-		if (xpos == 10 + (13 * 18) && kb_IsDown(kb_KeyRight) && tab < 3)
-		{
-			tab++;
+		// tabs
+		if (kb_IsDown(kb_KeyYequ) || kb_IsDown(kb_KeyWindow) || kb_IsDown(kb_KeyZoom) || kb_IsDown(kb_KeyTrace) || kb_IsDown(kb_KeyGraph)) {
+			if (kb_IsDown(kb_KeyYequ)) tab = 0;
+			if (kb_IsDown(kb_KeyWindow)) tab = 1;
+			if (kb_IsDown(kb_KeyZoom)) tab = 2;
+			if (kb_IsDown(kb_KeyTrace)) tab = 3;
+			if (kb_IsDown(kb_KeyGraph)) tab = 4;
 			scroll = 0;
 			pos = 0;
+			xpos = 28;
+			ypos = 25;
 		}
 		// scroll bar movement
-		if (ypos == 10 && kb_IsDown(kb_KeyUp) && scroll > 0)
+		if (ypos == 25 + (9 * 18) && kb_IsDown(kb_KeyDown) && scroll < 8)
+		{
+			scroll++;
+			pos += 14;
+		}
+		if (ypos == 25 && kb_IsDown(kb_KeyUp) && scroll > 0)
 		{
 			scroll--;
 			pos -= 14;
 		}
-		if (ypos == 10 + (9 * 18) && kb_IsDown(kb_KeyDown) && scroll < 8)
-			scroll++;
 		// move cursor left and right if cursor is at the hotbar
-		xpos += 18 * (kb_IsDown(kb_KeyRight) && xpos < 117 + (4 * 18)) * (ypos == 200) - 18 * (kb_IsDown(kb_KeyLeft) && xpos > 117) * (ypos == 200);
-		hotbarpos += (kb_IsDown(kb_KeyRight) && hotbarpos < 5) * (ypos == 200) - (kb_IsDown(kb_KeyLeft) && hotbarpos > 0) * (ypos == 200);
+		xpos += 18 * (kb_IsDown(kb_KeyRight) && xpos < 117 + (4 * 18)) * (ypos == 210) - 18 * (kb_IsDown(kb_KeyLeft) && xpos > 117) * (ypos == 210);
+		hotbarpos += (kb_IsDown(kb_KeyRight) && hotbarpos < 5) * (ypos == 210) - (kb_IsDown(kb_KeyLeft) && hotbarpos > 0) * (ypos == 210);
 		// cursor movement
-		pos += (kb_IsDown(kb_KeyRight) && xpos <= 10 + (13 * 18)) * (ypos != 200) - (kb_IsDown(kb_KeyLeft) && xpos >= 10) * (ypos != 200);
-		pos += 14 * (kb_IsDown(kb_KeyDown) && ypos <= 10 + (9 * 18)) * (ypos != 200) - 14 * (kb_IsDown(kb_KeyUp) && ypos > 10) * (ypos != 200);
-		xpos += 18 * (kb_IsDown(kb_KeyRight) && xpos < 10 + (13 * 18)) * (ypos != 200) - 18 * (kb_IsDown(kb_KeyLeft) && xpos > 10) * (ypos != 200);
-		ypos += 18 * (kb_IsDown(kb_KeyDown) && ypos < 10 + (9 * 18)) * (ypos != 200) - 18 * (kb_IsDown(kb_KeyUp) && ypos > 10) * (ypos != 200);
+		pos += (kb_IsDown(kb_KeyRight) && xpos < 28 + (13 * 18)) * (ypos != 210) - (kb_IsDown(kb_KeyLeft) && xpos > 28) * (ypos != 210);
+		pos += 14 * (kb_IsDown(kb_KeyDown) && ypos < 25 + (9 * 18)) * (ypos != 210) - 14 * (kb_IsDown(kb_KeyUp) && ypos > 25) * (ypos != 210);
+		xpos += 18 * (kb_IsDown(kb_KeyRight) && xpos < 28 + (13 * 18)) * (ypos != 210) - 18 * (kb_IsDown(kb_KeyLeft) && xpos > 28) * (ypos != 210);
+		ypos += 18 * (kb_IsDown(kb_KeyDown) && ypos < 25 + (9 * 18)) * (ypos != 210) - 18 * (kb_IsDown(kb_KeyUp) && ypos > 25) * (ypos != 210);
 	}
 	delay(200);
 	kb_Scan();
@@ -1126,7 +1315,6 @@ void creativeInventory(void)
 void MainMenu()
 {
 	int8_t scroll = 16;
-	gfx_SetTransparentColor(255);
 	curY = 125;
 	// fix closing the game unnecessarily.
 	kb_Scan();
@@ -1134,11 +1322,9 @@ void MainMenu()
 	{
 		// draw the main menu
 		kb_Scan();
-		LoadBlock("CLASSICB", 82, 16 * 16, 0);
-		for (x = 0; x < 320; x += 16)
-		{
-			for (y = 0; y < 240; y += 16)
-			{
+		LoadBlock("CLASSICB", 77, 16 * 16, 0);
+		for (x = 0; x < 320; x += 16) {
+			for (y = scroll - 16; y < 240 + scroll; y += 16) {
 				gfx_TransparentSprite(sprites[0], x, y);
 			}
 		}
@@ -1148,23 +1334,23 @@ void MainMenu()
 		appvar = ti_Open("MC2DDAT", "r");
 		logo = ti_GetDataPtr(appvar);
 		ti_Close(appvar);
+		gfx_SetTransparentColor(255);
 		gfx_ScaledTransparentSprite_NoClip(logo, 32, 20, 2, 2);
+		gfx_SetTransparentColor(7);
 		/* buttons */
-		gfx_SetColor(181);
-		gfx_FillRectangle(60, 125, 192, 20);
-		gfx_FillRectangle(60, 150, 192, 20);
-		gfx_FillRectangle(60, 175, 192, 20);
-		gfx_FillRectangle(60, 200, 192, 20);
-		gfx_SetColor(140);
-		/* redraw only the one button that needs it */
-		gfx_SetColor(181);
-		gfx_FillRectangle(60, curY, 192, 20);
+		for (y = 125; y < 225; y += 25) {
+			gfx_SetColor(181);
+			gfx_FillRectangle(60, y, 192, 20);
+			gfx_SetColor(0);
+			gfx_Rectangle(60, y, 192, 20);
+			gfx_Rectangle(61, y + 1, 190, 18);
+		}
 		/* button text */
 		gfx_PrintStringXY("Play", 144, 130);
 		gfx_PrintStringXY("Achievements", 116, 155);
 		gfx_PrintStringXY("Settings", 130, 180);
 		gfx_PrintStringXY("Quit", 144, 205);
-		gfx_SetColor(0);
+		gfx_SetColor(254);
 		gfx_Rectangle(60, curY, 192, 20);
 		gfx_Rectangle(61, curY + 1, 190, 18);
 		gfx_BlitBuffer();
@@ -1185,7 +1371,6 @@ void MainMenu()
 		}
 		if (kb_IsDown(kb_Key2nd))
 		{
-			gfx_SetTransparentColor(252);
 			if (curY == 125)
 			{
 				playMenu();
@@ -1209,13 +1394,12 @@ void MainMenu()
 			}
 		}
 	}
-	gfx_End();
 }
 
 void Achievements(void)
 {
-	int24_t x, y;
-	LoadBlock("CLASSICB", 82, 16 * 16, 0);
+	int16_t x, y;
+	LoadBlock("CLASSICB", 122, 16 * 16, 0);
 	for (x = 0; x < 320; x += 16)
 	{
 		for (y = 0; y < 240; y += 16)
@@ -1254,7 +1438,7 @@ void Settings(void)
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
-		LoadBlock("CLASSICB", 82, 16 * 16, 0);
+		LoadBlock("CLASSICB", 77, 16 * 16, 0);
 		for (x = 0; x < 320; x += 16)
 		{
 			for (y = 0; y < 240; y += 16)
@@ -1287,10 +1471,13 @@ void Settings(void)
 
 void input(char *string, int size)
 {
-	const char *chars = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
-	uint8_t key, length = strlen(string), scroll = 0, i = 0;
+	const char *charsUpper = "\0\0\0\0\0\0\0\0\0\0\"WRMH\0\0?[VQLG\0\0:ZUPKFC\0 YTOJEB\0\0XSNIDA\0\0\0\0\0\0\0\0";
+	const char *charsLower = "\0\0\0\0\0\0\0\0\0\0\"wrmh\0\0?[vqlg\0\0:zupkfc\0 ytojeb\0\0xsnida\0\0\0\0\0\0\0\0";
+	const char *charsNum = "\0\0\0\0\0\0\0\0\0\0\+-*/\0\0\0?369(\0\0\0\0258)\0\0\00147,\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	uint8_t key, length = strlen(string), scroll = 0, i = 0, chartype = 0;
 	// set i to the first occurence of a null character
 	for (i = 0; i < length; i++) {
+		if (i > 31) scroll++;
 		if (string[i] == 0) break;
 	}
 	gfx_SetColor(181);
@@ -1302,26 +1489,33 @@ void input(char *string, int size)
 	while((key = os_GetCSC()) != sk_Enter) {
 		gfx_SetColor(181);
 		gfx_FillRectangle(1, 217, 318, 22);
-
-
-		gfx_SetTextXY(4, 231);
-		gfx_PrintInt(i,1);
-
-		gfx_SetTextXY(4, 221);
+		gfx_SetColor(0);
+		gfx_FillRectangle(4, 223, 10, 10);
+		gfx_SetTextFGColor(254);
+		if (chartype == 0) gfx_PrintStringXY("A", 5, 224);
+		if (chartype == 1) gfx_PrintStringXY("a", 5, 224);
+		if (chartype == 2) gfx_PrintStringXY("1", 5, 224);
+		gfx_SetTextFGColor(0);
+		gfx_SetTextXY(18, 224);
 		pos = scroll;
 		for (pos = scroll; pos < scroll + 32; pos++)
 		{
 			gfx_SetTextFGColor(0);
 			if (pos < i)
 			gfx_PrintChar(string[pos]);
-			if (pos == i) {
-				gfx_SetTextFGColor(0);
-			}
 		}
 		gfx_BlitBuffer();
 
-		if(chars[key] && i <= size) {
-			string[i] = chars[key];
+		if (kb_IsDown(kb_KeyAlpha)) {
+			delay(200);
+			chartype++;
+			if (chartype > 2) chartype = 0;
+		} 
+
+		if(charsUpper[key] && i <= size) {
+			if (chartype == 0) string[i] = charsUpper[key];
+			if (chartype == 1) string[i] = charsLower[key];
+			if (chartype == 2) string[i] = charsNum[key];
 			string[i + 1] = 0;
 			i++;
 			if (i > 32) scroll++;
@@ -1337,14 +1531,15 @@ void input(char *string, int size)
 
 void playMenu(void)
 {
-	int24_t CursorY, x, i, scroll, scrollY, redraw, tab;
-	int24_t gamemode, worldSize, cheats, scrollYb;
-	char *gamemodeStr[3] = {"Survival", "Creative", "Hardcore"};
+	int16_t CursorY, x, i, scroll, scrollY, redraw, tab;
+	int16_t worldSize, cheats = 0, scrollYb;
+	gamemode = 0;
+	char *gamemodeStr[3] = {"Survival", "Creative", "Adventure"};
 	char *worldSizeStr[3] = {"Small", "Medium", "Large"};
 	char *cheatsStr[2] = {"Off", "On"};
 	char *worldTypesStr[3] = {"Standard", "Superflat", "Large Biomes"};
 	findAppvars("MCCESV");
-	LoadBlock("CLASSICB", 82, 16 * 16, 0);
+	LoadBlock("CLASSICB", 77, 16 * 16, 0);
 	for (x = 0; x < 320; x += 16)
 	{
 		for (y = 0; y < 240; y += 16)
@@ -1352,7 +1547,6 @@ void playMenu(void)
 			gfx_TransparentSprite(sprites[0], x, y);
 		}
 	}
-	gfx_SetTransparentColor(255);
 	tab = 0;
 	scroll = 0;
 	CursorY = 40;
@@ -1360,7 +1554,7 @@ void playMenu(void)
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		kb_Scan();
-		LoadBlock("CLASSICB", 82, 16 * 16, 0);
+		LoadBlock("CLASSICB", 77, 16 * 16, 0);
 		for (x = 0; x < 320; x += 16)
 		{
 			for (y = 0; y < 240; y += 16)
@@ -1383,7 +1577,7 @@ void playMenu(void)
 		{
 			gfx_SetColor(148);
 			gfx_FillRectangle(21, 40, 278, 25);
-			gfx_PrintStringXY("Create New World", 110, 47);
+			DrawCenteredText("Create New World", 160, 47);
 			gfx_SetColor(254);
 			gfx_Rectangle(21, CursorY, 278, 25 - ((CursorY != 40) * 8));
 			gfx_Rectangle(22, CursorY + 1, 276, 23 - ((CursorY != 40) * 8));
@@ -1401,43 +1595,42 @@ void playMenu(void)
 						gfx_PrintStringXY(WorldsList[i], 40, 70 + y);
 					y += 17;
 				}
-			}
-
-			if (kb_IsDown(kb_KeyUp) && (CursorY == 65))
-			{
-				delay(50);
-				CursorY = 40;
-				scrollYb = -1;
-			}
-			else
-			{
-				if (kb_IsDown(kb_KeyUp) && (scrollYb > 0) && (CursorY != 40))
+				if (kb_IsDown(kb_KeyUp) && (CursorY == 65))
 				{
 					delay(50);
-					CursorY -= 17;
-					scrollYb--;
+					CursorY = 40;
+					scrollYb = -1;
 				}
-			}
-			if (kb_IsDown(kb_KeyDown) && (CursorY == 40) && (foundCount != 0))
-			{
-				delay(50);
-				CursorY = 65;
-				scrollYb = 0;
-				scroll = 0;
-			}
-			else
-			{
-				if (kb_IsDown(kb_KeyDown) && (scrollYb < foundCount - 1) && (scrollYb < 10))
+				else
 				{
-					delay(50);
-					CursorY += 17;
-					scrollYb++;
+					if (kb_IsDown(kb_KeyUp) && (scrollYb > 0) && (CursorY != 40))
+					{
+						delay(50);
+						CursorY -= 17;
+						scrollYb--;
+					}
 				}
-				if (kb_IsDown(kb_KeyDown) && (scrollYb < foundCount - 1) && (scrollYb > 9))
+				if (kb_IsDown(kb_KeyDown) && (CursorY == 40) && (foundCount != 0))
 				{
 					delay(50);
-					scroll++;
-					scrollYb++;
+					CursorY = 65;
+					scrollYb = 0;
+					scroll = 0;
+				}
+				else
+				{
+					if (kb_IsDown(kb_KeyDown) && (scrollYb < foundCount - 1) && (scrollYb < 10))
+					{
+						delay(50);
+						CursorY += 17;
+						scrollYb++;
+					}
+					if (kb_IsDown(kb_KeyDown) && (scrollYb < foundCount - 1) && (scrollYb > 9))
+					{
+						delay(50);
+						scroll++;
+						scrollYb++;
+					}
 				}
 			}
 			if (kb_IsDown(kb_Key2nd) && (CursorY > 40))
@@ -1472,14 +1665,11 @@ void playMenu(void)
 			if (kb_IsDown(kb_Key2nd) && (CursorY == 40))
 			{
 				CursorY = 80;
-				gamemode = 0;
 				worldSize = 0;
-				cheats = 0;
 				worldType = 0;
-				redraw = 1;
 				while (!(kb_IsDown(kb_KeyClear)))
 				{
-					LoadBlock("CLASSICB", 82, 16 * 16, 0);
+					LoadBlock("CLASSICB", 77, 16 * 16, 0);
 					for (x = 0; x < 320; x += 16)
 					{
 						for (y = 0; y < 240; y += 16)
@@ -1642,7 +1832,7 @@ void compressAndWrite(void *data, int len, ti_var_t fp)
 	int new_len;
 	*((int *)0xE30010) = 0xD40000; // force the lcd to use the first half of VRAM so we can use the second half.
 	gfx_SetDrawScreen();
-	LoadBlock("CLASSICB", 82, 16 * 16, 0);
+	LoadBlock("CLASSICB", 77, 16 * 16, 0);
 	for (x = 0; x < 320; x += 16)
 	{
 		for (y = 0; y < 240; y += 16)
