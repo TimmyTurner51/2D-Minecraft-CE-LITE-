@@ -5,36 +5,36 @@ converts:
     tilesets:
       tile-width: 16
       tile-height: 16
-    transparent-color-index: 0
-    images:
+      images:
       - Textures/Classic/MC2DBLOCKS.png
+    transparent-color-index: 0
 
   - name: CLASSICP
     palette: xlibc
     tilesets:
       tile-width: 16
       tile-height: 16
+      images:
+      - Textures/Classic/MC2DPLANTS.png
     transparent-color-index: 0
-    images:
-      - Textures/Classic/2DMCPLANTS.png
 
   - name: CLASSICI
     palette: xlibc
     tilesets:
       tile-width: 16
       tile-height: 16
+      images:
+      - Textures/Classic/MC2DITEMS.png
     transparent-color-index: 0
-    images:
-      - Textures/Classic/2DMCITEMS.png
 
   - name: CLASSICF
     palette: xlibc
     tilesets:
       tile-width: 16
       tile-height: 16
+      images:
+      - Textures/Classic/MC2DFOLIAGE.png
     transparent-color-index: 0
-    images:
-      - Textures/Classic/2DMCFOLIAGE.png
 
   - name: images
     palette: xlibc
@@ -64,8 +64,6 @@ converts:
       - hunger2.png
       - hunger3.png
       - hunger_empty.png
-      - inventory.png
-      - crafting_table.png
 
 outputs:
   - type: c

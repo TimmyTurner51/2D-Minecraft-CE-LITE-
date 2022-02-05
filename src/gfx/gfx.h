@@ -30,8 +30,6 @@ extern "C" {
 #include "hunger2.h"
 #include "hunger3.h"
 #include "hunger_empty.h"
-#include "inventory.h"
-#include "crafting_table.h"
 
 #ifdef __cplusplus
 }
