@@ -10,7 +10,7 @@ Platforms: TI-84 Plus CE.
 
 OS versions: You can use anything below OS 5.5.
 
-Version: DEV_ALPHA v1.0.1
+Version: DEV_ALPHA v1.0.2
 
 WARNING! Backup your RAM before using this program! This is in heavy development, and bugs do exist. Some may cause crashes, but basic functionality is there.
 
@@ -22,19 +22,25 @@ Controls:
  - del destroys
  - [y=] through [graph] changes the selected hotbar slot.
  - [X,T,0,n] opens the inventory.
+ - [math] is for in-game chat (not finished)
 
 
 Added features and improvements:
- - Major bug fixes, which includes player cursor misalignment
- - New feature! You can now double-press the Up/Jump key to toggle flying!
- - Oak tree generation has been changed
- - Code has been implemented for village generation (no houses yet though)!
- - Code has been implemented for spruce trees!
- - Readded menus
- - Improved the World Rendering Engine
- - Removed asm code, as it's been replaced with C versions.
- - Added basic world saving/loading (sometimes breaks, or doesn't function properly as of yet).
+- Basic necessary settings added
+- In-game pause menu (in-game settings not added until normal settings are more complete.
+- Languages! We have English and Dutch thus far (dutch provided by Swordgirl)
+- Settings page revamp!
+- More World Generation Options screen, which lets you toggle flowers, villages, etc.
+- Settings save and load.
+- Sprites now load in their own array, so the game loads from those rather than individual sprite data from the appvars.
+- Graphics for resource loading. This is based on official Minecraft resource loading screen.
+- Village houses!
 
+Known bugs:
+- Village Generation can be a bit...broken. I'm working on fixing it asap.
+- FPS counter may not be 100% accurate. Using the barebones method, it only gave 1 FPS, even though the game wasn't that slow. So I'm reworking it to take into account the render speed, game speed, etc.
+- When loading a previous world, and exit, the saving/compression routine can be way too slow, freeze (requiring RAM reset), or even crash the calc completely (more rare).
+- When loading a previous world, the gamemode resets to survival when it was originally creative.
 
 Future Updates (in order of timeline):
  - Finish Village Generation
