@@ -1,6 +1,6 @@
 NAME ?= MC2DCE
 ICON ?= icon.png
-DESCRIPTION ?= "2D Minecraft CE (C) DEV_ALPHA v1.0.0"
+DESCRIPTION ?= "2D Minecraft CE (C) DEV_ALPHA v1.0.2"
 COMPRESSED ?= YES
 ARCHIVED ?= YES
 
