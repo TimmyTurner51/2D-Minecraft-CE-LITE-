@@ -192,6 +192,12 @@ void Generator(void)
 			{
 				// oak tree
 				pos = groundLevel - 7;
+				WorldData[x + ((pos + 2) * MaxX)] = 151;
+				WorldData[x + ((pos + 3) * MaxX)] = 151;
+				WorldData[x + ((pos + 4) * MaxX)] = 151;
+				WorldData[x + ((pos + 5) * MaxX)] = 151;
+				WorldData[x + ((pos + 6) * MaxX)] = 151;
+				WorldData[x + ((pos + 7) * MaxX)] = 151;
 				WorldData[x + (pos * MaxX)] = 222;
 				WorldData[x - 1 + (pos * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
 				WorldData[x + 1 + (pos * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
@@ -207,11 +213,6 @@ void Generator(void)
 				WorldData[x + 1 + ((pos + 3) * MaxX)] = 222;
 				WorldData[x + 2 + ((pos + 2) * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
 				WorldData[x + 2 + ((pos + 3) * MaxX)] = (222 * ((randInt(0, 3) == 1) * WorldData[x - 2 + ((pos + 2) * MaxX)] == 0));
-				WorldData[x + ((pos + 2) * MaxX)] = 151;
-				WorldData[x + ((pos + 3) * MaxX)] = 151;
-				WorldData[x + ((pos + 4) * MaxX)] = 151;
-				WorldData[x + ((pos + 5) * MaxX)] = 151;
-				WorldData[x + ((pos + 6) * MaxX)] = 151;
 			}
 			if (biomeVal != 1 && (randInt(0, 8 - ((biomeVal == 1) * 3)) == 0) && (WorldData[x + (groundLevel * MaxX)] != 234))
 			{
@@ -221,10 +222,10 @@ void Generator(void)
 				WorldData[x + ((pos + 1) * MaxX)] = 223;
 				WorldData[x - 1 + ((pos + 1) * MaxX)] = 223;
 				WorldData[x + 1 + ((pos + 1) * MaxX)] = 223;
-				WorldData[x + ((pos + 2) * MaxX)] = 200;
-				WorldData[x + ((pos + 3) * MaxX)] = 200;
-				WorldData[x + ((pos + 4) * MaxX)] = 200;
-				WorldData[x + ((pos + 5) * MaxX)] = 200;
+				WorldData[x + ((pos + 2) * MaxX)] = 199;
+				WorldData[x + ((pos + 3) * MaxX)] = 199;
+				WorldData[x + ((pos + 4) * MaxX)] = 199;
+				WorldData[x + ((pos + 5) * MaxX)] = 199;
 				if (randInt(0, 3) == 1)
 				{
 					WorldData[x - 1 + ((pos + 3) * MaxX)] = 223;
@@ -243,7 +244,7 @@ void Generator(void)
 		// foliage start at MaxSprites[0] + 1
 		// plants start at MaxSprites[0] + MaxSprites[3] + 1
 		// flowers (anything non-desert)
-		if (genFlowers == 1 && biomeVal != 1 && randInt(0, 2) == 0 && WorldData[x + ((groundLevel - 1) * MaxX)] == 0)
+		if (genFlowers == 1 && (biomeVal == 0 || biomeVal == 2) && randInt(0, 2) == 0 && WorldData[x + ((groundLevel - 1) * MaxX)] == 0)
 		{
 			if (randInt(0, 2) == 0)
 				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 2;
@@ -271,7 +272,7 @@ void Generator(void)
 			if (randInt(0, 2) == 0)
 				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 56;
 			if (randInt(0, 2) == 0)
-				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 73;
+				WorldData[x + ((groundLevel - 1) * MaxX)] = MaxSprites[0] + MaxSprites[3] + 74;		// 73
 			// rose bush
 			if (randInt(0, 2) == 0)
 			{
@@ -307,26 +308,27 @@ void Generator(void)
 			{
 				for (terrainVal = groundLevel - 1 - randInt(0, 2); terrainVal < groundLevel; terrainVal++)
 				{
-					WorldData[x + (terrainVal * MaxX)] = 43;
+					WorldData[x + (terrainVal * MaxX)] = 40;
 				}
 			}
 		}
 
+		
 		// Village Generation
-		if (genVillages == 1 && biomeVal == 4 && (groundLevel >= 34 || worldType == 1) && x >= 21)
+		lengthA = randInt(3, 7);
+		if (genVillages == 1 && biomeVal == 4 && (groundLevel >= 34 || worldType == 1) && x < MaxX - lengthA * 7)
 		{
 			// 7 is the size of a 5-block long/small house, plus 2 for 1 block ground spacing on each side
 			// we can generate wider buildings, that are 12 blocks long + 2 for ground blocks (again, 1 on each side)
-			lengthA = randInt(3, 7);
 			lengthB = 0;
 			posd = 8;
 			// left-right
-			for (posb = x - lengthA * 7; posb < x; posb++)
+			for (posb = x; posb < x + lengthA * 7; posb++)
 			{
 				// up-down
 				for (posc = groundLevel; posc < groundLevel + posd; posc++)
 				{
-					//WorldData[posb + (posc * MaxX)] = 0;
+					WorldData[posb + (posc * MaxX)] = 0;
 					// gravel path
 					if (posc == groundLevel)
 						WorldData[posb + (posc * MaxX)] = 84;
@@ -337,7 +339,7 @@ void Generator(void)
 				// houses
 				// small house (5x5)
 				// Oak planks (ID is 152)
-				if (posb >= (x - (lengthA * 7)) + (lengthB + 1) && posb <= (x - (lengthA * 7)) + (lengthB + 5)) {
+				if (posb >= (x + (lengthA * 7)) + (lengthB + 1) && posb <= (x + (lengthA * 7)) + (lengthB + 5)) {
 					// left wall
 					WorldData[(lengthB + 1) + ((groundLevel) * MaxX)] = 151;
 					WorldData[(lengthB + 1) + ((groundLevel - 1) * MaxX)] = 151;
@@ -390,21 +392,21 @@ void Generator(void)
 				// large house (12x5)
 
 
-				if (posb == (x - (lengthA * 7)) + lengthB + 7) lengthB += 7;
+				if (posb == (x + (lengthA * 7)) + lengthB + 7) lengthB += 7;
 			}
 		}
 
 		// cave generation
-		if (genCaves == 1 && randInt(0, 2) == 0 && x >= 21) {
-			for (xa = x - 20; xa < x - 1; xa++) {
-				for (ya = y + groundLevel + 10; ya < y + groundLevel + 10 + randInt(4, 6); ya++) {
+		if (genCaves == 1 && randInt(0, 2) == 1 && x >= 21) {
+			for (xa = x - 20; xa < x - 20 + randInt(6, 19); xa++) {
+				for (ya = groundLevel + 10 + randInt(1, 4); ya < groundLevel + 10 + randInt(3, 6); ya++) {
 					WorldData[xa + ya * MaxX] = 0;
 				}
 			}
 		}
 
 		// water generation
-		if (biomeVal == 3 && groundLevel >= 34)
+		if ((biomeVal == 3 || randInt(1, 3) == 2) && groundLevel >= 34 && worldType != 1)
 		{
 			groundLevelB = groundLevel;
 			// pos is left-to-right size
@@ -414,6 +416,7 @@ void Generator(void)
 				// generates up to down
 				for (posc = 0; posc < groundLevel - posd + randInt(2, 5); posc++)
 				{
+					WorldData[posb + (posc * MaxX)] = 0;
 					if (posc >= groundLevel)
 						WorldData[posb + (posc * MaxX)] = 215;
 				}
@@ -454,6 +457,7 @@ void Generator(void)
 		}
 		// bedrock
 		WorldData[x + ((y - 1) * MaxX)] = 15;
+
 		x++;
 	}
 	playerX = 10;
@@ -469,7 +473,6 @@ void Generator(void)
 		playerY++;
 		curPos += MaxX;
 		WorldTimerPosY++;
-		if (WorldTimerPosY > 70) WorldTimerPosY = 0;
 	}
 	scrollX = 0;
 	scrollY = 0;
@@ -486,7 +489,6 @@ void Game(void)
 	int16_t blockLeftCenter = 0, blockLeftBottom = 0;
 	int16_t blockRightCenter = 0, blockRightBottom = 0;
 	int16_t blockAtFeet = 0, blockBelowFeet = 0;
-	int16_t fps = 0, counter = 0, second_Last;
 	gfx_SetClipRegion(0 - 17, 0 - 17, 337, 257);
 	RenderEngine();
 
@@ -496,15 +498,7 @@ void Game(void)
 
 		RenderEngine();
 
-		// fps counter
-		count++;
-		if (rtc_Seconds >= second_Last) {
-			second_Last = rtc_Seconds;
-			fps = count + (16 - pixelAmount) - shadowing;
-			count = 0;
-		}
-
-		if (gameSettings[4] == 1) {
+		if (gameSettings[3] == 1) {
 			// debug
 			gfx_SetTextFGColor(0);
 			gfx_SetTextXY(25, 20);
@@ -768,11 +762,7 @@ void Game(void)
 			if (kb_IsDown(kb_KeyDown) && flymode == 1 && playerY < MaxY - 15 && WorldData[(playerX + ((playerY + 3) * MaxX))] != 0 && WorldData[(playerX + ((playerY + 3) * MaxX))] != 233 && WorldData[(playerX + ((playerY + 3) * MaxX))] != WATERENTITY)
 				flymode = 0;
 		}
-		
-		if (WorldTimerPosX >= 60) WorldTimerPosX = 0;
-		if (WorldTimerPosX <= 0) WorldTimerPosX = 60;
-		if (WorldTimerPosY >= 65) WorldTimerPosY = 0;
-		if (WorldTimerPosY <= 0) WorldTimerPosY = 65;
+
 		gfx_BlitBuffer();
 	}
 	kb_Scan();
@@ -782,7 +772,8 @@ void Game(void)
 void RenderEngine(void)
 {
 	int16_t blockVal = 0, blockValLeft = 0, blockValRight = 0, blockValTop = 0, blockValBottom = 0;
-	int16_t testX, testY, timerX, timerY;
+	int16_t testX, testY;
+	int16_t counter = 0, second_Last;
 	// draw sky
 	// try gfx_Darken(colorValue) as time var increments
 	// so maybe day/night transitioning would appear smoother
@@ -800,16 +791,11 @@ void RenderEngine(void)
 	if (timeofday > 4)
 		timeofday = 0;
 
-//	count = 0;
-//	CacheBlocks(playerX, playerY);
-
-	timerX = WorldTimerPosX;
-	timerY = WorldTimerPosY;
 	testX = playerX - 10;
 	testY = playerY - 5;
 	drawX = scrollX;
 	drawY = scrollY;
-	for (render = 0; render < 20 * 16; render++)			 //21 * 16
+	for (render = 0; render < 21 * 16; render++)
 	{
 		gfx_SetColor(0);
 		pos = testX + testY * MaxX;
@@ -819,8 +805,8 @@ void RenderEngine(void)
 		blockValRight = WorldData[pos + 1];
 		blockValTop = WorldData[pos - MaxX];
 		blockValBottom = WorldData[pos + MaxX];
-		// overrides shadowing for water and any values above or equal to what WATERENTITY is defined as.
-		if (blockVal == 233 || blockVal >= WATERENTITY)
+		// overrides shadowing for lava, water, and any values above or equal to what WATERENTITY is defined as.
+		if (blockVal == 232 || blockVal == 233 || blockVal >= WATERENTITY)
 			blockValTop = 0;
 		if ((blockVal != 0) && testX >= 0 && testX <= MaxX - 10 && ((shadowing == 0) || (shadowing != 0 && ((blockValLeft == 0 || blockValRight == 0 || blockValTop == 0 || blockValBottom == 0) || (blockValLeft > MaxSprites[0] || blockValRight > MaxSprites[0] || blockValTop > MaxSprites[0] || blockValBottom > MaxSprites[0])))))
 		{
@@ -839,48 +825,34 @@ void RenderEngine(void)
 			gfx_SetColor(dayColors[timeofday]);
 			if (blockVal >= WATERENTITY && blockVal <= WATERENTITY + 7)
 				gfx_FillRectangle(drawX, drawY, 16, (blockVal - WATERENTITY) * 2);
-		}else{
-			if (blockVal != 0 && testX >= 0 && testX <= MaxX - 10)
-				gfx_FillRectangle(drawX, drawY, 16, 16);
 		}
-		drawY += 16;
-		testY++;
-		if (timerY <= 65) timerY++;
-		if (testY == playerY + 11) {
-			testX++;
-			testY = playerY - 5;
-			if (timerX <= 60) timerX++;
-			timerY = WorldTimerPosY;
-			drawY = scrollY;
-			drawX += 16;
-		}
-	}
+		gfx_SetColor(0);
+		// shading
+		//if (WorldDataTimer[timerX + timerY * MaxX] >= shadingVal && blockVal == 0 && testX >= 0 && testX <= MaxX - 10 && (blockValLeft == 0 || blockValRight == 0 || blockValTop == 0 || blockValBottom == 0))
+		//	WorldDataTimer[timerX + timerY * MaxX] = 0;
+		
+		if (WorldDataTimer[pos] >= shadingVal)
+			gfx_FillRectangle(drawX, drawY, 16, WorldDataTimer[pos] - shadingVal);
 
-	timerX = WorldTimerPosX;
-	timerY = WorldTimerPosY;
-	drawX = scrollX;
-	drawY = scrollY;
-	testX = playerX - 10;
-	testY = playerY - 5;
-	for (render = 0; render < 20 * 15; render++)
-	{
-		pos = (testX + (testY * MaxX));
-		WorldDataTimer[timerX + timerY * 80] -= WorldDataTimer[timerX + timerY * 80] > 0;
-		Behaviors(pos, timerX + timerY * 80);
-//		gfx_SetTextFGColor(0);
-//		gfx_SetTextXY(drawX + 2, drawY + 2);
-//		gfx_PrintInt(WorldDataTimer[timerX + timerY * 80], 1);
-		testY++;
-		timerY++;
-//		drawY += 16;
-		if (timerY >= 65) timerY = WorldTimerPosY;
-		if (testY >= playerY + 10) {
-			testY = playerY - 5;
-//			drawY = scrollY;
-			testX++;
-			timerX++;
-//			drawX += 16;
-			if (timerY >= 60) timerY = WorldTimerPosY;
+		if (WorldDataTimer[pos] < shadingVal)
+			WorldDataTimer[pos] -= WorldDataTimer[pos] > 0;
+		Behaviors(pos, pos);
+
+		// fps counter
+		counter++;
+		if (rtc_Seconds >= second_Last) {
+			second_Last = rtc_Seconds;
+			fps = counter; // + (pixelAmount - shadowing)
+			counter = 0;
+		}
+
+		drawX += 16;
+		testX++;
+		if (testX == playerX + 11) {
+			testY++;
+			testX = playerX - 10;
+			drawX = scrollX;
+			drawY += 16;
 		}
 	}
 
@@ -919,14 +891,15 @@ void deathScreen(void)
 
 void Behaviors(int16_t position, int16_t timerPos)
 {
+
 	// grass turns to dirt
 
 	// remove flowing down water when source was removed
-	if (WorldData[position] == WATERENTITY && WorldData[position - MaxX] != 215 && WorldData[position - MaxX] < WATERENTITY && WorldDataTimer[timerPos - 80] < 1) {
+	if (WorldData[position] == WATERENTITY && WorldData[position - MaxX] != 215 && WorldData[position - MaxX] < WATERENTITY && WorldDataTimer[timerPos - MaxX] < 1) {
 		WorldData[position] = 0;
 		WorldDataTimer[timerPos] = 3;
 	}
-	if (WorldData[position] >= WATERENTITY && WorldData[position - MaxX] == 0 && WorldData[position - 1] == 0 && WorldData[position + 1] == 0 && WorldDataTimer[timerPos - 80] < 1) {
+	if (WorldData[position] >= WATERENTITY && WorldData[position - MaxX] == 0 && WorldData[position - 1] == 0 && WorldData[position + 1] == 0 && WorldDataTimer[timerPos - MaxX] < 1) {
 		WorldData[position] = 0;
 		WorldDataTimer[timerPos] = 3;
 	}
@@ -1307,7 +1280,7 @@ void pauseMenu(void) {
 		if (kb_IsDown(kb_KeyUp) && posY > 100) posY -= 25;
 		if (kb_IsDown(kb_KeyDown) && posY < 150) posY += 25;
 		delay(100 * (kb_IsDown(kb_KeyUp) || kb_IsDown(kb_KeyDown)));
-		if (kb_IsDown(kb_Key2nd) && posY == 125) inGameOptions();
+		if (kb_IsDown(kb_Key2nd) && posY == 125) Settings(1);
 		if (kb_IsDown(kb_Key2nd) && posY == 150) {
 			// save the world data, playerX, playerY, curPos, curX, curY, timeofday, etc...
 			//world_file = "        ";
@@ -1415,7 +1388,7 @@ void MainMenu()
 			if (curY == 175)
 			{ //"Settings"
 				delay(100);
-				Settings();
+				Settings(0);
 				curY = 175;
 				delay(100);
 				MainMenu();
@@ -1456,7 +1429,7 @@ void Achievements(void)
 	delay(100);
 }
 
-void Settings(void)
+void Settings(bool ingameTrue)
 {
 	int16_t tab = 0, itemScroll = 0, pos, option;
 	curX = 10;
@@ -1465,6 +1438,7 @@ void Settings(void)
 	{
 		kb_Scan();
 		DrawDirtBackground(0);
+		if (ingameTrue == 1) RenderEngine();
 		gfx_SetColor(74);
 		gfx_FillRectangle(5, 5, 310, 230);
 		gfx_SetColor(0);
@@ -1729,6 +1703,9 @@ void playMenu(void)
 				genCaves = 1;
 				genFlowers = 1;
 				genVillages = 1;
+				worldSize = 0;
+				worldType = 0;
+				CursorY = 60;
 				NewWorldScreen();
 			}
 		}
@@ -1764,9 +1741,6 @@ void playMenu(void)
 }
 
 void NewWorldScreen(void) {
-	CursorY = 60;
-	worldSize = 0;
-	worldType = 0;
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
 		DrawDirtBackground(0);
@@ -1855,18 +1829,18 @@ void NewWorldScreen(void) {
 			{
 				if (worldSize == 0)
 				{
-					MaxX = 60;
-					MaxY = 60;
+					MaxX = 16 * 4;
+					MaxY = 16 * 4;
 				}
 				if (worldSize == 1)
 				{
-					MaxX = 100;
-					MaxY = 100;
+					MaxX = 16 * 7;
+					MaxY = 16 * 7;
 				}
 				if (worldSize == 2)
 				{
-					MaxX = 160;
-					MaxY = 150;
+					MaxX = 16 * 9;
+					MaxY = 16 * 9;
 				}
 				// supposed to take the first 8 letters of the worldName string and copy to world_file
 				memcpy(world_file, worldNameStr, 8);
@@ -1886,8 +1860,6 @@ void NewWorldScreen(void) {
 
 void MoreWorldOptions(void) {
 	CursorY = 60;
-	worldSize = 0;
-	worldType = 0;
 	while (!(kb_IsDown(kb_KeyClear)) && !(kb_IsDown(kb_Key2nd) && CursorY == 140))
 	{
 		DrawDirtBackground(0);
@@ -1928,11 +1900,6 @@ void MoreWorldOptions(void) {
 	}
 	delay(100);
 	kb_Scan();
-	NewWorldScreen();
-}
-
-void inGameOptions(void) {
-
 }
 
 void DrawDirtBackground(int16_t scrollVal) {
