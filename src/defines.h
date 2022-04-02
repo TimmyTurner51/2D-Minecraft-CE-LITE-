@@ -1,18 +1,17 @@
-
 // only need to define blocks that require gameplay mechanics
 // (gravity, etc., like water and lava)
 
 // Values for non-permanent blocks, WATER and LAVA entities include the max horizontal flow of 7 blocks.
 int16_t WATERENTITY = 549;
-int16_t LAVAENTITY = 549 + 7;
+int16_t LAVAENTITY = 556;
+int16_t lightVal = 16;       // 7
 
 void MainMenu(void);
 void playMenu(void);
 void NewWorldScreen(void);
 void MoreWorldOptions(void);
-void inGameOptions(void);
 void Achievements(void);
-void Settings(void);
+void Settings(bool ingameTrue);
 void findAppvars(const char *str);
 
 // blocks, items, plants, foliage 
@@ -28,11 +27,12 @@ gfx_TempSprite(logo, 16, 16);
 //gfx_rletsprite_t *block;
 //gfx_UninitedRLETSprite(block, 16 * 16);
 
-int16_t WorldData[ 160 * 150 ] = { 0 };
-int16_t MaxX = 160, MaxY = 150;
+int16_t WorldData[ 144 * 144 ] = { 0 };
+int16_t MaxX = 144, MaxY = 144;
 
 // only used by the behaviors and/or world rendering
-int16_t WorldDataTimer[ 80 * 80 ] = { 0 };
+int WorldDataTimer[ 32 * 32 ] = { 0 };
+int BlockLightVals[ 32 * 32 ] = { 0 };
 
 // personal inventory
 // Block ID's first (0 - 26), then the amounts for each (27 - 54), or health if it's armor, etc.
@@ -47,14 +47,14 @@ int16_t hotbar[10] = { 0 };
 int16_t redraw = 1, playerX = 0, playerY = 0, WorldTimerPosX = 0, WorldTimerPosY = 0;
 int16_t curPos, curX = 11, curY = 6;
 int16_t hotbarSel = 0;
-int16_t pos = 0, render = 0, x = 0, y = 0, drawX = 0, drawY = 0, count = 1;
+int16_t pos = 0, render = 0, x = 0, y = 0, drawX = 0, drawY = 0, counter = 0, fps = 0;
 int16_t jump = 0, dayTimer = 0;
 int16_t scrollX = 0, scrollY = 0, error = 0;
 int16_t health = 0, hunger = 0, damageAmount = 0, damageDealt = 0;
 int16_t dayColors[5] = {191, 158, 125, 51, 9};
 int16_t dialog = 0, dialogTimer = 0;
 char dialogString[50] = "";
-int16_t keyPresses[8] = { 0 }, testVar, testVarB, listPos, timer;
+int16_t testVar, testVarB, listPos, timer, rtc;
 int16_t CursorY, x, i, scroll, scrollY, scrollYb, redraw, tab;
 
 int16_t worldSize, cheats = 0;
@@ -62,7 +62,7 @@ int16_t worldSize, cheats = 0;
 int16_t genTrees, genFlowers, genVillages, genCaves;
 // game settings
 // { language, speed, shadowing, debug stats }
-int16_t gameSettings[4] = { 0, 2, 1, 0 };
+int16_t gameSettings[4] = { 0, 2, 0, 0 };
 // game settings max values
 int16_t gameSettingsMaxVals[4] = { 1, 4, 1, 1 };
 

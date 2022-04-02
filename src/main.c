@@ -20,8 +20,9 @@
 #include <keypadc.h>
 #include <fileioc.h>
 
-#include <srldrvce.h>
-#include <usbdrvce.h>
+// include when multiplayer is reasonable
+//#include <srldrvce.h>
+//#include <usbdrvce.h>
 
 #include "gfx/gfx.h"
 
@@ -60,6 +61,10 @@ int main(void)
 {
 	gfx_Begin();
 	ti_CloseAll();
+	// find a better way than using the rtc for things like block timings, 
+	// time between up presses to toggle fly, etc. May need to use this, but more 
+	// research may be needed in the near future.
+	//timer_Enable(1, TIMER_32K, TIMER_0INT, TIMER_UP);
 	gfx_SetClipRegion(-17, -17, 337, 257);
 	gfx_SetDrawBuffer();
 	gfx_SetTextFGColor(0);
@@ -406,7 +411,7 @@ void Generator(void)
 		}
 
 		// water generation
-		if ((biomeVal == 3 || randInt(1, 3) == 2) && groundLevel >= 34 && worldType != 1)
+		if ((biomeVal == 3 && groundLevel == 34) || (randInt(1, 3) == 2 && groundLevel >= 34 && worldType != 1))
 		{
 			groundLevelB = groundLevel;
 			// pos is left-to-right size
@@ -473,6 +478,7 @@ void Generator(void)
 		playerY++;
 		curPos += MaxX;
 		WorldTimerPosY++;
+		if (WorldTimerPosY > 32) WorldTimerPosY = 0;
 	}
 	scrollX = 0;
 	scrollY = 0;
@@ -489,8 +495,8 @@ void Game(void)
 	int16_t blockLeftCenter = 0, blockLeftBottom = 0;
 	int16_t blockRightCenter = 0, blockRightBottom = 0;
 	int16_t blockAtFeet = 0, blockBelowFeet = 0;
+	int16_t Up_Count;
 	gfx_SetClipRegion(0 - 17, 0 - 17, 337, 257);
-	RenderEngine();
 
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
@@ -517,7 +523,7 @@ void Game(void)
 
 		// cursor
 		if (timeofday <= 2) gfx_SetColor(0);
-		if (timeofday > 2) gfx_SetColor(254);
+		if (timeofday > 2 || WorldData[curPos] != 0) gfx_SetColor(148);
 		gfx_Rectangle(scrollX + (curX * 16), scrollY + (curY * 16), 16, 16);
 
 		// add health, hunger, and exp bars for survival and adventure modes
@@ -636,12 +642,6 @@ void Game(void)
 			dialog = 1;
 			// 0 = survival, 1 = creative, 2 = adventure
 		}
-
-		if (!(kb_IsDown(kb_KeyUp))) listPosition++;
-			if (listPosition > 7)
-				listPosition = 0;
-
-		keyPresses[listPosition] = (kb_IsDown(kb_KeyUp));
 		// allows movement in a 1-block wide area
 		if (kb_IsDown(kb_KeyLeft) && playerX > 0 && (blockLeftCenter != 0) && scrollX < 0) scrollX += pixelAmount;
 		if (kb_IsDown(kb_KeyRight) && playerX < MaxX && (blockRightCenter != 0) && scrollX > -16 + 6) scrollX -= pixelAmount;
@@ -677,7 +677,7 @@ void Game(void)
 				playerY--;
 				WorldTimerPosY--;
 			}else{
-				if (blockBelowFeet == 0 && jump != 1) {
+				if ((blockBelowFeet == 0 || blockAtFeet >= WATERENTITY) && jump != 1) {
 					scrollY -= pixelAmount;
 					if (scrollY <= -16) {
 						playerY++;
@@ -729,34 +729,21 @@ void Game(void)
 		}
 
 
-		// double up to toggle fly mode
 		if (gamemode != 0 && gamemode != 2) {
-			testVar = 0;
-			x = 0;
-			y = 0;
-			for (pos = 0; pos < 8; pos++)
-			{
-				if (keyPresses[pos] != 0 && keyPresses[pos + 1] == 0 && x != 0 && y == 0)
-					y = pos;
-				if (keyPresses[pos] != 0 && keyPresses[pos + 1] == 0 && x == 0)
-					x = pos;
-			}
-			// 0 1 1 0 1 0 0 0 (as an example)
-			if (y - x >= 1 && (!(kb_IsDown(kb_KeyUp))))
-			{
-				timer = 0;
-				dialogTimer = 50;
-				dialog = 1;
-				// 0 = off, 1 = on
-				flymode++;
-				if (flymode > 1)
-					flymode = 0;
-				if (flymode == 0)
+			// double up to toggle fly mode
+			if (kb_IsDown(kb_KeyUp)) {
+				if (Up_Count == 1 && rtc + 1 == rtc_Seconds) {
+					rtc = rtc_Seconds;
+					timer = 0;
+					dialogTimer = 50;
+					dialog = 1;
+					flymode = (flymode == 0);
 					strcpy(dialogString, "Fly Mode toggled Off");
-				if (flymode == 1)
-					strcpy(dialogString, "Fly Mode toggled On");
-				memset(keyPresses, 0, sizeof keyPresses);
-				listPosition = 0;
+					if (flymode == 1)
+						strcpy(dialogString, "Fly Mode toggled On");
+				}
+				Up_Count = (Up_Count == 0);
+				if (Up_Count == 0) rtc = rtc_Seconds;
 			}
 			// turn off fly mode if you touch the ground
 			if (kb_IsDown(kb_KeyDown) && flymode == 1 && playerY < MaxY - 15 && WorldData[(playerX + ((playerY + 3) * MaxX))] != 0 && WorldData[(playerX + ((playerY + 3) * MaxX))] != 233 && WorldData[(playerX + ((playerY + 3) * MaxX))] != WATERENTITY)
@@ -772,8 +759,8 @@ void Game(void)
 void RenderEngine(void)
 {
 	int16_t blockVal = 0, blockValLeft = 0, blockValRight = 0, blockValTop = 0, blockValBottom = 0;
-	int16_t testX, testY;
-	int16_t counter = 0, second_Last;
+	int16_t testX, testY, timerX, timerY;
+	int16_t counter = 0, second_Last = rtc_Seconds;
 	// draw sky
 	// try gfx_Darken(colorValue) as time var increments
 	// so maybe day/night transitioning would appear smoother
@@ -793,6 +780,10 @@ void RenderEngine(void)
 
 	testX = playerX - 10;
 	testY = playerY - 5;
+	if (WorldTimerPosX > 32) WorldTimerPosX = 0;
+	if (WorldTimerPosY > 32) WorldTimerPosY = 0;
+	timerX = WorldTimerPosX;
+	timerY = WorldTimerPosY;
 	drawX = scrollX;
 	drawY = scrollY;
 	for (render = 0; render < 21 * 16; render++)
@@ -827,17 +818,18 @@ void RenderEngine(void)
 				gfx_FillRectangle(drawX, drawY, 16, (blockVal - WATERENTITY) * 2);
 		}
 		gfx_SetColor(0);
+		WorldDataTimer[timerX + timerY * 32] -= WorldDataTimer[timerX + timerY * 32] > 0;
 		// shading
-		//if (WorldDataTimer[timerX + timerY * MaxX] >= shadingVal && blockVal == 0 && testX >= 0 && testX <= MaxX - 10 && (blockValLeft == 0 || blockValRight == 0 || blockValTop == 0 || blockValBottom == 0))
-		//	WorldDataTimer[timerX + timerY * MaxX] = 0;
-		
-		if (WorldDataTimer[pos] >= shadingVal)
-			gfx_FillRectangle(drawX, drawY, 16, WorldDataTimer[pos] - shadingVal);
+		BlockLightVals[timerX + timerY * 32] = 0;
+		if (BlockLightVals[timerX + timerY * 32] == 0 && blockVal != 0 && blockVal <= MaxSprites[0] && blockVal != 215 && blockVal != 216 && (blockValLeft != 0 && blockValRight != 0 && blockValTop != 0 && blockValBottom != 0))
+			BlockLightVals[timerX + timerY * 32] = lightVal;
+		/*if (BlockLightVals[timerX + timerY * 32] > 0 && blockVal != 0 && blockVal <= MaxSprites[0]) {
+			if (blockValTop != 0 && BlockLightVals[timerX + timerY * 32] < BlockLightVals[timerX + ((timerY - 1) * 32)]) 
+				BlockLightVals[timerX + timerY * 32]--;
+		}*/
 
-		if (WorldDataTimer[pos] < shadingVal)
-			WorldDataTimer[pos] -= WorldDataTimer[pos] > 0;
-		Behaviors(pos, pos);
-
+		if (BlockLightVals[timerX + timerY * 32] > 0 && shadowing == 1)
+		gfx_FillRectangle(drawX, drawY, 16, BlockLightVals[timerX + timerY * 32]);
 		// fps counter
 		counter++;
 		if (rtc_Seconds >= second_Last) {
@@ -848,9 +840,15 @@ void RenderEngine(void)
 
 		drawX += 16;
 		testX++;
+		timerX++;
+		if (timerX > 32) timerX = 0;
 		if (testX == playerX + 11) {
+			Behaviors(pos, timerX + timerY * 32);
 			testY++;
+			timerY++;
+			if (timerY > 32) timerY = 0;
 			testX = playerX - 10;
+			timerX = WorldTimerPosX;
 			drawX = scrollX;
 			drawY += 16;
 		}
@@ -1001,6 +999,9 @@ void survivalInventory(void) {
 				// check if it's plants
 				if (hotbar[x] > MaxSprites[0] + MaxSprites[3] && hotbar[x] <= MaxSprites[0] + MaxSprites[3] + MaxSprites[2])
 					gfx_TransparentSprite(PlantTextures[hotbar[x] - 1 - (MaxSprites[0] + MaxSprites[3])], 118 + (x * 18), 201);
+				gfx_SetTextFGColor(0);
+				gfx_SetTextXY(117 + (x * 18) + 10, 231);
+				if (hotbar[x] != 0) gfx_PrintInt(hotbar[x + 5], 1);
 			}else{
 				gfx_SetColor(181);
 				gfx_FillRectangle(118 + (x * 18), 201, 16, 16);
@@ -1071,8 +1072,8 @@ void giveItem(int16_t blockID, int16_t breaking) {
 void creativeInventory(void)
 {
 	int16_t xpos = 28, ypos = 25, num, spritenum, tab = 0, pos = 0, hotbarpos = 0, lastPos;
-	int16_t scroll = 0, oldBlock = 0, newBlock = 0, InvCurPos = 0, lastXpos = 0, selectedFromTab = 0;
-	int16_t newBlockCount = 0, oldBlockCount = 0;
+	int16_t scroll = 0, InvCurPos = 0, lastXpos = 0, selectedFromTab = 0;
+	int16_t newBlock = 0, newBlockCount = 0, oldBlock = 0, oldBlockCount = 0;
 	char *tabNames[5] = { "Building Blocks", "Items", "Plants", "Foliage", "Player" };
 	while (!(kb_IsDown(kb_KeyClear)))
 	{
@@ -1087,7 +1088,7 @@ void creativeInventory(void)
 		gfx_SetColor(181);
 		gfx_FillRectangle(29 + (14 * 18), 25 + (scroll * (180 / 9)), 5, 180 / 9);
 		// tab names
-		if (tab == 0) gfx_TransparentSprite(BlockTextures[101], 30, 8);
+		if (tab == 0) gfx_TransparentSprite(BlockTextures[94], 30, 8);
 		if (tab == 1) gfx_TransparentSprite(ItemTextures[0], 30, 8);
 		if (tab == 2) gfx_TransparentSprite(PlantTextures[0], 30, 8);
 		if (tab == 3) gfx_TransparentSprite(FoliageTextures[0], 30, 8);
@@ -1180,6 +1181,8 @@ void creativeInventory(void)
 			pos = lastPos + 14;
 			ypos = 25 + (10 * 18);
 		}
+		if (kb_IsDown(kb_Key2nd) || kb_IsDown(kb_KeyUp) || kb_IsDown(kb_KeyDown) || kb_IsDown(kb_KeyLeft) || kb_IsDown(kb_KeyRight))
+		delay(80);
 		// clears the selected block if user clicks an empty space in the inventory
 		if (kb_IsDown(kb_Key2nd) && (pos >= MaxSprites[tab] || (newBlock != pos + 1 && newBlock != 0)) && ypos != 210)
 		{
@@ -1202,6 +1205,7 @@ void creativeInventory(void)
 		if (kb_IsDown(kb_Key2nd) && ypos == 210)
 		{
 			oldBlock = hotbar[hotbarpos];
+			oldBlockCount = hotbar[hotbarpos + 5];
 			if (newBlock == 0)
 			{
 				// check if it's blocks
@@ -1216,10 +1220,14 @@ void creativeInventory(void)
 				// check if it's plants
 				if (hotbar[hotbarpos] > MaxSprites[0] + MaxSprites[1] + MaxSprites[2] && hotbar[hotbarpos] <= MaxSprites[0] + MaxSprites[1] + MaxSprites[2] + MaxSprites[3])
 					selectedFromTab = 3;
+				hotbar[hotbarpos] = 0;
+				hotbar[hotbarpos + 5] = 0;
 			}else{
 				hotbar[hotbarpos] = newBlock;
+				hotbar[hotbarpos + 5] = newBlockCount;
 			}
 			newBlock = oldBlock;
+			newBlockCount = oldBlockCount;
 		}
 		// tabs
 		if (kb_IsDown(kb_KeyYequ) || kb_IsDown(kb_KeyWindow) || kb_IsDown(kb_KeyZoom) || kb_IsDown(kb_KeyTrace) || kb_IsDown(kb_KeyGraph)) {
@@ -1277,10 +1285,14 @@ void pauseMenu(void) {
 		}
 		gfx_BlitBuffer();
 		kb_Scan();
+		if (kb_IsDown(kb_KeyUp) || kb_IsDown(kb_KeyDown)) delay(80);
 		if (kb_IsDown(kb_KeyUp) && posY > 100) posY -= 25;
 		if (kb_IsDown(kb_KeyDown) && posY < 150) posY += 25;
 		delay(100 * (kb_IsDown(kb_KeyUp) || kb_IsDown(kb_KeyDown)));
-		if (kb_IsDown(kb_Key2nd) && posY == 125) Settings(1);
+		if (kb_IsDown(kb_Key2nd) && posY == 125) {
+			Settings(1);
+			RenderEngine();
+		}
 		if (kb_IsDown(kb_Key2nd) && posY == 150) {
 			// save the world data, playerX, playerY, curPos, curX, curY, timeofday, etc...
 			//world_file = "        ";
@@ -1431,14 +1443,12 @@ void Achievements(void)
 
 void Settings(bool ingameTrue)
 {
-	int16_t tab = 0, itemScroll = 0, pos, option;
-	curX = 10;
-	curY = 40;
+	int16_t tab = 0, itemScroll = 0, pos, option, curpX = 10, curpY = 40;
+	DrawDirtBackground(0);
+	if (ingameTrue == 1) RenderEngine();
 	while (!(kb_IsDown(kb_KeyClear)) && !(kb_IsDown(kb_Key2nd) && tab == 3))
 	{
 		kb_Scan();
-		DrawDirtBackground(0);
-		if (ingameTrue == 1) RenderEngine();
 		gfx_SetColor(74);
 		gfx_FillRectangle(5, 5, 310, 230);
 		gfx_SetColor(0);
@@ -1463,8 +1473,8 @@ void Settings(bool ingameTrue)
 			DrawCenteredText(MenuElements[pos], 50, 44 + ((pos - 4) * 20));
 		}
 		gfx_SetColor(254);
-		gfx_Rectangle(curX, curY, 180 - (100 * (curX == 10)), 16);
-		gfx_Rectangle(curX + 1, curY + 1, 178 - (100 * (curX == 10)), 14);
+		gfx_Rectangle(curpX, curpY, 180 - (100 * (curpX == 10)), 16);
+		gfx_Rectangle(curpX + 1, curpY + 1, 178 - (100 * (curpX == 10)), 14);
 		if (tab == 0) {
 			gameSettingsStr[0] = languages[gameSettings[0]];
 			gameSettingsStr[1] = SpeedStr[gameSettings[1]];
@@ -1504,24 +1514,25 @@ void Settings(bool ingameTrue)
 		}
 		gfx_BlitBuffer();
 
-		if (kb_IsDown(kb_Key2nd) && curX == 10) {
-			tab = (curY - 40) / 20;
+		if (kb_IsDown(kb_Key2nd) && curpX == 10) {
+			tab = (curpY - 40) / 20;
 		}
-		if (kb_IsDown(kb_Key2nd) && curX != 10) {
-			option = (curY - 40) / 20;
+		if (kb_IsDown(kb_Key2nd) && curpX != 10) {
+			option = (curpY - 40) / 20;
 			// 4 is the amount of current options
 			gameSettings[option + (tab * 4)]++;
 			if (gameSettings[option + (tab * 4)] > gameSettingsMaxVals[option + (tab * 4)]) gameSettings[option + (tab * 4)] = 0;
 			delay(200);
 		}
-
-		if (kb_IsDown(kb_KeyUp) && curY > 40) curY -= 20;
-		if (kb_IsDown(kb_KeyDown) && curY < 120 - (20 * (curX == 10))) curY += 20;
+		if (kb_IsDown(kb_KeyUp) || kb_IsDown(kb_KeyDown) || kb_IsDown(kb_KeyLeft) || kb_IsDown(kb_KeyRight))
+		delay(80);
+		if (kb_IsDown(kb_KeyUp) && curpY > 40) curpY -= 20;
+		if (kb_IsDown(kb_KeyDown) && curpY < 120 - (20 * (curpX == 10))) curpY += 20;
 		if (kb_IsDown(kb_KeyLeft)) {
-			curX = 10;
-			curY = 40 + tab * 20;
+			curpX = 10;
+			curpY = 40 + tab * 20;
 		}
-		if (kb_IsDown(kb_KeyRight) && tab != 2) curX = 100;
+		if (kb_IsDown(kb_KeyRight) && tab != 2) curpX = 100;
 	}
 	delay(100);
 	appvar = ti_Open("MCESETT", "w");
