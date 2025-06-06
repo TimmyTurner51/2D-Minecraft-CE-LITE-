@@ -8,6 +8,9 @@
 #include <graphx.h>
 #include <tice.h>
 
+
+extern char version[14];
+
 extern ti_var_t appvar;
 extern gfx_sprite_t *logo;
 extern int16_t WATERENTITY;

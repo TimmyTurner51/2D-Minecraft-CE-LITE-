@@ -1,5 +1,9 @@
 #include "globals.h"
 
+
+char version[14] = "v1.0.3dev";
+
+
 // Sprites
 gfx_sprite_t *logo;
 
@@ -68,8 +72,8 @@ char *GameOptionStr[4];
 char *GameOptionStrEN[4] = {"Language", "Screen Speed", "Block Shadowing", "Debug Stats"};
 char *GameOptionStrNL[4] = {"Language","Schermsnelheid", "Blokschaduwen", "debug-statistieken"};
 char *gamemodeStr[3];
-char *gamemodeStrEN[3] = {"Creative", "Survival", "Adventure"};
-char *gamemodeStrNL[3] = {"Creatief", "Overleving", "Avontuur"};
+char *gamemodeStrEN[3] = {"Survival", "Creative", "Adventure"};
+char *gamemodeStrNL[3] = {"Overleving", "Creatief", "Avontuur"};
 char *worldSizeStr[3];
 char *worldSizeStrEN[3] = {"Small", "Medium", "Large"};
 char *worldSizeStrNL[3] = {"Klein", "Gemiddeld", "Groot"};
@@ -83,8 +87,8 @@ char *MenuElementsEN[21] = {"Play", "Achievements", "Settings", "Quit", "Gamepla
 char *MenuElementsNL[21] = {"Speel", "Prestaties", "Instellingen", "Stoppen", "Gameplay", "Linken", "Over", "Terug", "Mijn werelden", "Servers", "Vrienden", "Genereer Nieuwe Wereld", "Geen wereld gevonden!", "Voeg server toe", "Vrienden niet beschikbaar", "Terug naar spel", "Opties", "Verlaat naar menu", "Respawn", "Wereld generen", "Terrein bouwen"};
 char *NewWorldMenuElementsEN[13] = {"Name:", "Seed:", "Gamemode:", "World Size:", "Cheats:", "World Type:", "More World Options", "Generate", "Generate Trees:", "Generate Flowers:", "Village Generation:", "Cave Generation:", "Done"};
 char *NewWorldMenuElementsNL[13] = {"Naam:", "Seed:", "Spelmode:", "Wereld grootte:", "Cheats:", "Wereld type:", "Meer wereld opties", "Genereren", "Genereer bomen:", "Genereer bloemen:", "Dorp generatie:", "Grot generatie:", "Klaar"};
-char *AboutEN[12] = {"About: v1.0.2a by TimmyCraft", "Thanks to:", "- MateoC for the CE C", "Toolchain", "- TIny_Hacker for textures.","- BeckAdamTheInventor for", "Compression routines", "- My girlfriend for ", "translating to Dutch.", "- All those who've given", "feedback on cemetech.net", "and my discord server."};
-char *AboutNL[12] = {"Over: v1.0.2a Door TimmyCraft", "Met dank aan:", "- MateoC voor de CE C", "Toolchain", "- TIny_Hacker voor ", "- BeckAdamTheInventor voor", "Compression routines", "- Mijn vriendin voor ", "Vertalen naar Nederlands.", "- Feedback van iedereen", "op cemetech.net", "en mijn discord server."};
+char *AboutEN[12] = {"About: Developed by TimmyCraft", "Thanks to:", "- MateoC for the CE C", "Toolchain", "- TIny_Hacker for textures.","- BeckAdamTheInventor for", "Compression routines", "- My girlfriend for ", "translating to Dutch.", "- All those who've given", "feedback on cemetech.net", "and my discord server."};
+char *AboutNL[12] = {"Over: Ontwikkeld Door TimmyCraft", "Met dank aan:", "- MateoC voor de CE C", "Toolchain", "- TIny_Hacker voor ", "- BeckAdamTheInventor voor", "Compression routines", "- Mijn vriendin voor ", "Vertalen naar Nederlands.", "- Feedback van iedereen", "op cemetech.net", "en mijn discord server."};
 
 
 // Misc
